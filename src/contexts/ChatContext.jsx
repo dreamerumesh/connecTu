@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'; // socket.io client
 import { chatService } from '../services/chatService';
 import { useUser } from './UserContext'; // Assuming you have an AuthContext
+import { io } from "socket.io-client"; // socket.io client
 
 const ChatContext = createContext();
 
@@ -14,6 +15,9 @@ export const useChat = () => {
 
 export const ChatProvider = ({ children }) => {
   const { user } = useUser(); // Get current user from auth context
+  const socketRef = useRef(null); // socket.io client
+  const activeChatRef = useRef(null); // socket.io client
+  const SOCKET_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/api\/?$/, ""); // socket.io client
   
   const [chats, setChats] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
@@ -21,6 +25,42 @@ export const ChatProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
+
+    const joinChat = useCallback((chatId) => { // socket.io client
+        if (socketRef.current && chatId) { // socket.io client
+          console.log("Socket", socketRef.current.id, "joining chat", chatId); // socket.io client
+          socketRef.current.emit("join-chat", chatId); // socket.io client
+        } // socket.io client
+      }, []); // socket.io client
+
+      useEffect(() => {
+      if (activeChat?.chatId) {
+        joinChat(activeChat.chatId);
+      }
+    }, [activeChat?.chatId, joinChat]);
+
+    useEffect(() => { // socket.io client
+      activeChatRef.current = activeChat; // socket.io client
+    }, [activeChat]); // socket.io client
+
+    useEffect(() => {
+      if (!socketRef.current) {
+        socketRef.current = io(SOCKET_URL, {
+          auth: { token: localStorage.getItem("authToken") },
+        });
+
+        socketRef.current.on("receive-message", (message) => {
+          console.log("✅ SOCKET MESSAGE:", message);
+
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === message._id)) return prev;
+            return [...prev, message];
+          });
+        });
+      }
+    }, [SOCKET_URL]);
+
+
 
   // Fetch all chats for the logged-in user
   const fetchChats = useCallback(async () => {
@@ -62,7 +102,9 @@ export const ChatProvider = ({ children }) => {
       const data = await chatService.sendMessage(receiverPhone, content, type);
       
       // Add new message to the messages array
-      setMessages(prev => [...prev, data.message]);
+      //setMessages(prev => [...prev, data.message]);
+      // ❌ DO NOT update messages here
+     // socket will deliver message to both sender & receiver
       
       // Refresh chat list to update last message
       await fetchChats();
@@ -158,6 +200,7 @@ export const ChatProvider = ({ children }) => {
     editMessage,
     selectChat,
     clearActiveChat,
+    joinChat, // socket.io client
     addMessage,
     updateMessage,
     setError

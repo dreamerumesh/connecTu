@@ -14,7 +14,8 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
     loading,
     error,
     fetchMessages,
-    sendMessage
+    sendMessage,
+    joinChat // socket.io client
   } = useChat();
 
   const bottomRef = useRef(null);
@@ -26,10 +27,14 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
     fetchMessages(chatId);
   }, [chatId, fetchMessages]);
 
+  useEffect(() => { // socket.io client
+    if (chatId) joinChat(chatId); // socket.io client
+  }, [chatId, joinChat]); // socket.io client
+
   // auto scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages.length]);
 
   // ---------- UI STATES ----------
   if (!chatId) {
@@ -40,7 +45,7 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
     );
   }
 
-  if (loading) {
+  if (loading && messages.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="animate-spin h-7 w-7 border-4 border-blue-500 border-t-transparent rounded-full" />
@@ -71,6 +76,48 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
   }
 };
 
+function formatLastSeen(lastSeen) {
+  if (!lastSeen) return "";
+
+  const lastSeenDate = new Date(lastSeen);
+  const now = new Date();
+
+  // Remove time part for comparison
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const seenDay = new Date(
+    lastSeenDate.getFullYear(),
+    lastSeenDate.getMonth(),
+    lastSeenDate.getDate()
+  );
+
+  const diffDays = Math.floor(
+    (today - seenDay) / (1000 * 60 * 60 * 24)
+  );
+
+  // Format time (3:02 PM)
+  const time = lastSeenDate.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  if (diffDays === 0) {
+    return `today at ${time}`;
+  }
+
+  if (diffDays === 1) {
+    return `yesterday at ${time}`;
+  }
+
+  // Format: 4 Feb
+  const date = lastSeenDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
+
+  return `${date} at ${time}`;
+}
+
 
   // ---------- MAIN UI ----------
   return (
@@ -90,12 +137,12 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
               {selectedUser?.name}
             </span>
 
-            <span className="text-xs opacity-90">
+           <span className="text-xs opacity-90">
               {selectedUser?.isOnline
                 ? "Online"
                 : selectedUser?.lastSeen
-                  ? `Last seen ${formatTime(selectedUser.lastSeen)}`
-                  : "Offline"}
+                ? `Last seen ${formatLastSeen(selectedUser.lastSeen)}`
+                : "Offline"}
             </span>
           </div>
         </div>
