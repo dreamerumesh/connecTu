@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { chatService } from '../services/chatService';
 import { useUser } from './UserContext'; // Assuming you have an AuthContext
 import { io } from "socket.io-client"; // socket.io client
+import { useMemo } from 'react';
 
 const ChatContext = createContext();
 
@@ -22,13 +23,14 @@ export const ChatProvider = ({ children }) => {
   const [chats, setChats] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [chatsLoading, setChatsLoading] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
 
     const joinChat = useCallback((chatId) => { // socket.io client
         if (socketRef.current && chatId) { // socket.io client
-          console.log("Socket", socketRef.current.id, "joining chat", chatId); // socket.io client
+          //console.log("Socket", socketRef.current.id, "joining chat", chatId); // socket.io client
           socketRef.current.emit("join-chat", chatId); // socket.io client
         } // socket.io client
       }, []); // socket.io client
@@ -43,29 +45,146 @@ export const ChatProvider = ({ children }) => {
       activeChatRef.current = activeChat; // socket.io client
     }, [activeChat]); // socket.io client
 
-    useEffect(() => {
-      if (!socketRef.current) {
-        socketRef.current = io(SOCKET_URL, {
-          auth: { token: localStorage.getItem("authToken") },
-        });
+// useEffect(() => {
+//   if (!socketRef.current) {
+//     socketRef.current = io(SOCKET_URL, {
+//       auth: { token: localStorage.getItem("authToken") },
+//     });
 
-        socketRef.current.on("receive-message", (message) => {
-          console.log("✅ SOCKET MESSAGE:", message);
+//     // 🔹 receive message
+//     socketRef.current.on("receive-message", (message) => {
+//       setMessages((prev) => {
+//         if (prev.some((m) => m._id === message._id)) return prev;
+//         return [...prev, message];
+//       });
+//     });
 
-          setMessages((prev) => {
-            if (prev.some((m) => m._id === message._id)) return prev;
-            return [...prev, message];
-          });
-        });
-      }
-    }, [SOCKET_URL]);
+//     // 🔹 USER ONLINE / OFFLINE / LAST SEEN
+//     socketRef.current.on("user-status", ({ userId, isOnline, lastSeen }) => {
+//       console.log("👤 user-status:", userId, isOnline, lastSeen);
 
+//       // update chat list
+//       setChats((prevChats) =>
+//         prevChats.map((chat) =>
+//           chat.user._id === userId
+//             ? {
+//                 ...chat,
+//                 user: {
+//                   ...chat.user,
+//                   isOnline,
+//                   lastSeen,
+//                 },
+//               }
+//             : chat
+//         )
+//       );
+
+//       // update active chat header
+//       setActiveChat((prev) => {
+//         if (!prev || prev.user._id !== userId) return prev;
+
+//         return {
+//           ...prev,
+//           user: {
+//             ...prev.user,
+//             isOnline,
+//             lastSeen,
+//           },
+//         };
+//       });
+//     });
+//   }
+
+//   return () => {
+//     socketRef.current?.off("user-status");
+//   };
+// }, [SOCKET_URL]);
+
+useEffect(() => {
+  //console.log("🟡 ChatContext socket effect running");
+
+  if (!socketRef.current) {
+    //console.log("🟢 creating socket connection");
+
+    socketRef.current = io(SOCKET_URL, {
+      auth: { token: localStorage.getItem("authToken") },
+    });
+
+    socketRef.current.on("connect", () => {
+      //console.log("🔌 socket connected:", socketRef.current.id);
+    });
+
+    socketRef.current.on("disconnect", (reason) => {
+      //console.log("❌ socket disconnected:", reason);
+    });
+
+    socketRef.current.on("connect_error", (err) => {
+      //console.log("🔥 socket connect_error:", err.message);
+    });
+  }
+
+  // ✅ ALWAYS attach listeners (not only on first creation)
+  //console.log("📡 attaching socket listeners");
+
+  socketRef.current.on("receive-message", (message) => {
+    //console.log("📨 receive-message:", message._id);
+    setMessages((prev) => {
+      if (prev.some((m) => m._id === message._id)) return prev;
+      return [...prev, message];
+    });
+  });
+
+  socketRef.current.on("user-status", (payload) => {
+    //console.log("👤 user-status RECEIVED:", payload);
+
+    const { userId, isOnline, lastSeen } = payload;
+
+    setChats((prevChats) =>
+      prevChats.map((chat) =>
+        chat.user._id === userId
+          ? {
+              ...chat,
+              user: {
+                ...chat.user,
+                isOnline,
+                lastSeen,
+              },
+            }
+          : chat
+      )
+    );
+
+    setActiveChat((prev) => {
+      if (!prev || prev.user._id !== userId) return prev;
+
+      const updatedChat = {
+        ...prev,
+        user: {
+          ...prev.user,
+          isOnline,
+          lastSeen,
+        },
+      };
+
+      //console.log("Updated activeChat:", updatedChat);
+
+      return updatedChat;
+});
+  });
+
+  return () => {
+    console.log("🧹 cleaning up socket listeners");
+
+    socketRef.current?.off("receive-message");
+    socketRef.current?.off("user-status");
+  };
+}, [SOCKET_URL]);
 
 
   // Fetch all chats for the logged-in user
   const fetchChats = useCallback(async () => {
     try {
-      setLoading(true);
+      setChatsLoading(true);
       setError(null);
       const data = await chatService.getMyChats();
       setChats(data.chats || []);
@@ -73,16 +192,17 @@ export const ChatProvider = ({ children }) => {
       setError(err.message || 'Failed to fetch chats');
       console.error('Error fetching chats:', err);
     } finally {
-      setLoading(false);
+      setChatsLoading(false);
     }
   }, []);
 
   // Fetch messages for a specific chat
   const fetchMessages = useCallback(async (chatId) => {
+    //console.log("debug fetchMessages for chatId:", chatId);
     if (!chatId) return;
     
     try {
-      setLoading(true);
+      setMessagesLoading(true);
       setError(null);
       const data = await chatService.getChatMessages(chatId);
       setMessages(data.messages || []);
@@ -90,7 +210,7 @@ export const ChatProvider = ({ children }) => {
       setError(err.message || 'Failed to fetch messages');
       console.error('Error fetching messages:', err);
     } finally {
-      setLoading(false);
+      setMessagesLoading(false);
     }
   }, []);
 
@@ -184,30 +304,68 @@ export const ChatProvider = ({ children }) => {
     }
   }, [user, fetchChats]);
 
-  const value = {
-    // State
-    chats,
-    activeChat,
-    messages,
-    loading,
-    error,
-    sending,
+  // const value = useMemo(() => {
+  //   // State
+  //   chats,
+  //   activeChat,
+  //   messages,
+  //   loading,
+  //   error,
+  //   sending,
     
-    // Actions
-    fetchChats,
-    fetchMessages,
-    sendMessage,
-    editMessage,
-    selectChat,
-    clearActiveChat,
-    joinChat, // socket.io client
-    addMessage,
-    updateMessage,
-    setError
-  };
+  //   // Actions
+  //   fetchChats,
+  //   fetchMessages,
+  //   sendMessage,
+  //   editMessage,
+  //   selectChat,
+  //   clearActiveChat,
+  //   joinChat, // socket.io client
+  //   addMessage,
+  //   updateMessage,
+  //   setError
+  // };
+
+const contextValue = useMemo(() => ({
+  chats,
+  activeChat,
+  messages,
+  chatsLoading,
+  messagesLoading,
+  error,
+  sending,
+  fetchChats,
+  fetchMessages,
+  sendMessage,
+  editMessage,
+  selectChat,
+  clearActiveChat,
+  joinChat,
+  addMessage,
+  updateMessage,
+  setError
+}), [
+  chats,
+  activeChat,
+  messages,
+  chatsLoading,
+  messagesLoading,
+  error,
+  sending,
+  fetchChats,
+  fetchMessages,
+  sendMessage,
+  editMessage,
+  selectChat,
+  clearActiveChat,
+  joinChat,
+  addMessage,
+  updateMessage,
+  setError
+]);
 
   return (
-    <ChatContext.Provider value={value}>
+    <ChatContext.Provider value={contextValue}>
       {children}
     </ChatContext.Provider>
   );

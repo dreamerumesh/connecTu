@@ -11,25 +11,34 @@ const formatTime = (date) =>
 export default function SingleChat({ chatId, currentUserId, selectedUser }) {
   const {
     messages,
-    loading,
+    messagesLoading,
     error,
     fetchMessages,
     sendMessage,
-    joinChat // socket.io client
+    joinChat,  // socket.io client
+    activeChat
   } = useChat();
+
+  const user = activeChat?.user;
+  //console.log("single chat user:", activeChat);
 
   const bottomRef = useRef(null);
 
   const [message, setMessage] = useState("");
 
-  // fetch messages
+ const lastFetchedChatRef = useRef(null);
+
   useEffect(() => {
+    //console.log("SingleChat useEffect for chatId:", chatId);
+    if (!chatId) return;
+
+    if (lastFetchedChatRef.current === chatId) {
+      return; // 🛑 already fetched for this chat
+    }
+
+    lastFetchedChatRef.current = chatId;
     fetchMessages(chatId);
   }, [chatId, fetchMessages]);
-
-  useEffect(() => { // socket.io client
-    if (chatId) joinChat(chatId); // socket.io client
-  }, [chatId, joinChat]); // socket.io client
 
   // auto scroll to bottom
   useEffect(() => {
@@ -45,7 +54,7 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
     );
   }
 
-  if (loading && messages.length === 0) {
+  if (messagesLoading && messages.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="animate-spin h-7 w-7 border-4 border-blue-500 border-t-transparent rounded-full" />
@@ -138,12 +147,12 @@ function formatLastSeen(lastSeen) {
             </span>
 
            <span className="text-xs opacity-90">
-              {selectedUser?.isOnline
-                ? "Online"
-                : selectedUser?.lastSeen
-                ? `Last seen ${formatLastSeen(selectedUser.lastSeen)}`
-                : "Offline"}
-            </span>
+            {user?.isOnline
+              ? "Online"
+              : user?.lastSeen
+              ? `Last seen ${formatLastSeen(user.lastSeen)}`
+              : "Offline"}
+          </span>
           </div>
         </div>
       </div>

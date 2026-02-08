@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../utils/axiosConfig";
 import SingleChat from "./SingleChat"; // ✅ import single chat
 import { useUser } from "../contexts/UserContext";
+import { useChat } from "../contexts/ChatContext";
 // ---------- helpers ----------
 const normalizePhone = (phone) =>
   phone?.replace(/\D/g, "").slice(-10);
@@ -11,8 +12,10 @@ export default function Chats() {
   const { user } = useUser();
   const currentUserId = user?._id;
 
-  const [chats, setChats] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { chats, chatsLoading} = useChat(); // ✅ get chats from context
+
+  //const [chats, setChats] = useState([]);
+  //const [loading, setLoading] = useState(true);
   const [isLoggedIn] = useState(true); // replace with auth context
   const [selectedChatId, setSelectedChatId] = useState(null); // ✅ NEW
   const [selectedUser ,setSelectedUser] = useState(null);
@@ -29,33 +32,33 @@ export default function Chats() {
     contactMap[normalizePhone(c.phone)] = c.name;
   });
 
-  // ---------- fetch chats ----------
-  useEffect(() => {
-    if (!isLoggedIn) return;
+  //---------- fetch chats ----------
+  // useEffect(() => {
+  //   if (!isLoggedIn) return;
 
-    const fetchChats = async () => {
-      try {
-        const res = await api.get("/chats/");
-        const backendChats = res.data.chats || [];
+  //   const fetchChats = async () => {
+  //     try {
+  //       const res = await api.get("/chats/");
+  //       const backendChats = res.data.chats || [];
 
-        const merged = backendChats.map(chat => {
-          const phone = normalizePhone(chat.user.phone);
-          return {
-            ...chat,
-            displayName: contactMap[phone] || chat.user.name
-          };
-        });
+  //       const merged = backendChats.map(chat => {
+  //         const phone = normalizePhone(chat.user.phone);
+  //         return {
+  //           ...chat,
+  //           displayName: contactMap[phone] || chat.user.name
+  //         };
+  //       });
 
-        setChats(merged);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  //       setChats(merged);
+  //     } catch (err) {
+  //       console.error(err);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchChats();
-  }, [isLoggedIn]);
+  //   fetchChats();
+  // }, [isLoggedIn]);
 
   // ---------- UI STATES ----------
   if (!isLoggedIn) {
@@ -67,8 +70,8 @@ export default function Chats() {
       </div>
     );
   }
-
-  if (loading) {
+  //console.log("loading debug:", chatsLoading, "chats:", chats);
+  if (chatsLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="animate-spin h-8 w-8 rounded-full border-4 border-blue-500 border-t-transparent"></div>
@@ -137,6 +140,7 @@ export default function Chats() {
 
 // ---------- CHAT LIST ----------
 function ChatList({ chats, activeChatId, onSelectChat, onSelectUser }) {
+  const {selectChat} = useChat();
   if (chats.length === 0) {
     return (
       <p className="text-center text-gray-400 mt-10">
@@ -144,7 +148,7 @@ function ChatList({ chats, activeChatId, onSelectChat, onSelectUser }) {
       </p>
     );
   }
-
+  //console.log("Rendering ChatList with chats:", chats);
   return (
     <ul className="space-y-1">
       {chats.map(chat => (
@@ -153,6 +157,7 @@ function ChatList({ chats, activeChatId, onSelectChat, onSelectUser }) {
           onClick={() => {
             onSelectChat(chat.chatId);
             onSelectUser(chat.user);
+            selectChat(chat);
           }}
           className={`flex items-center gap-3 p-3 cursor-pointer rounded-lg transition
             ${
@@ -165,7 +170,7 @@ function ChatList({ chats, activeChatId, onSelectChat, onSelectUser }) {
           {/* Avatar */}
           <div className="relative">
             <div className="h-12 w-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-bold">
-              {chat.displayName[0]?.toUpperCase()}
+              {chat.user.name[0]?.toUpperCase()}
             </div>
 
             {chat.user.isOnline && (
@@ -177,7 +182,7 @@ function ChatList({ chats, activeChatId, onSelectChat, onSelectUser }) {
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-center">
               <p className="font-medium text-gray-800 truncate">
-                {chat.displayName}
+                {chat.user.name}
               </p>
               <span className="text-xs text-gray-400">
                 {new Date(chat.lastMessageTime).toLocaleTimeString([], {
