@@ -38,12 +38,23 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
 
     lastFetchedChatRef.current = chatId;
     fetchMessages(chatId);
-  }, [chatId, fetchMessages]);
+  }, [chatId]);
 
-  // auto scroll to bottom
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+    const prevCountRef = useRef(0);
+
+    useEffect(() => {
+      if (messages.length > prevCountRef.current) {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+      prevCountRef.current = messages.length;
+    }, [messages]);
+
+    useEffect(() => {
+    if (!chatId) return;
+    // jump immediately, no animation
+    bottomRef.current?.scrollIntoView({ behavior: "auto" });
+  }, [chatId]);
+
 
   // ---------- UI STATES ----------
   if (!chatId) {

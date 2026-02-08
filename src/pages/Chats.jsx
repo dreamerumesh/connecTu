@@ -12,7 +12,7 @@ export default function Chats() {
   const { user } = useUser();
   const currentUserId = user?._id;
 
-  const { chats, chatsLoading} = useChat(); // ✅ get chats from context
+  const { chats, chatsLoading, fetchChats } = useChat(); // ✅ get chats from context
 
   //const [chats, setChats] = useState([]);
   //const [loading, setLoading] = useState(true);
@@ -32,33 +32,6 @@ export default function Chats() {
     contactMap[normalizePhone(c.phone)] = c.name;
   });
 
-  //---------- fetch chats ----------
-  // useEffect(() => {
-  //   if (!isLoggedIn) return;
-
-  //   const fetchChats = async () => {
-  //     try {
-  //       const res = await api.get("/chats/");
-  //       const backendChats = res.data.chats || [];
-
-  //       const merged = backendChats.map(chat => {
-  //         const phone = normalizePhone(chat.user.phone);
-  //         return {
-  //           ...chat,
-  //           displayName: contactMap[phone] || chat.user.name
-  //         };
-  //       });
-
-  //       setChats(merged);
-  //     } catch (err) {
-  //       console.error(err);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchChats();
-  // }, [isLoggedIn]);
 
   // ---------- UI STATES ----------
   if (!isLoggedIn) {
@@ -74,7 +47,7 @@ export default function Chats() {
   if (chatsLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 rounded-full border-4 border-blue-500 border-t-transparent"></div>
+        <div className="animate-spin h-8 w-8 rounded-full border-4 border-red-500 border-t-transparent"></div>
       </div>
     );
   }

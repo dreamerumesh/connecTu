@@ -126,13 +126,34 @@ useEffect(() => {
   // ✅ ALWAYS attach listeners (not only on first creation)
   //console.log("📡 attaching socket listeners");
 
+  // socketRef.current.on("receive-message", (message) => {
+  //   //console.log("📨 receive-message:", message._id);
+  //   setMessages((prev) => {
+  //     if (prev.some((m) => m._id === message._id)) return prev;
+  //     return [...prev, message];
+  //   });
+  // });
   socketRef.current.on("receive-message", (message) => {
-    //console.log("📨 receive-message:", message._id);
-    setMessages((prev) => {
-      if (prev.some((m) => m._id === message._id)) return prev;
-      return [...prev, message];
+      // update messages
+      setMessages((prev) => {
+        if (prev.some((m) => m._id === message._id)) return prev;
+        return [...prev, message];
+      });
+
+      // ✅ update chat preview (NO API CALL)
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat.chatId === message.chatId
+            ? {
+                ...chat,
+                lastMessage: message.content,
+                lastMessageTime: message.createdAt,
+              }
+            : chat
+        )
+      );
     });
-  });
+
 
   socketRef.current.on("user-status", (payload) => {
     //console.log("👤 user-status RECEIVED:", payload);
@@ -183,6 +204,7 @@ useEffect(() => {
 
   // Fetch all chats for the logged-in user
   const fetchChats = useCallback(async () => {
+    console.log("debug fetchChats function is calling");
     try {
       setChatsLoading(true);
       setError(null);
@@ -198,7 +220,7 @@ useEffect(() => {
 
   // Fetch messages for a specific chat
   const fetchMessages = useCallback(async (chatId) => {
-    //console.log("debug fetchMessages for chatId:", chatId);
+    console.log("debug fetchMessages function is calling:", chatId);
     if (!chatId) return;
     
     try {
@@ -227,7 +249,7 @@ useEffect(() => {
      // socket will deliver message to both sender & receiver
       
       // Refresh chat list to update last message
-      await fetchChats();
+      //await fetchChats();
       
       return data.message;
     } catch (err) {
