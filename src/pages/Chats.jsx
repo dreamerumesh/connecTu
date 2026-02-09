@@ -12,10 +12,8 @@ export default function Chats() {
   const { user } = useUser();
   const currentUserId = user?._id;
 
-  const { chats, chatsLoading, fetchChats } = useChat(); // ✅ get chats from context
+  const { chats, chatsLoading, fetchChats, typingUsers } = useChat(); // ✅ get typingUsers
 
-  //const [chats, setChats] = useState([]);
-  //const [loading, setLoading] = useState(true);
   const [isLoggedIn] = useState(true); // replace with auth context
   const [selectedChatId, setSelectedChatId] = useState(null); // ✅ NEW
   const [selectedUser ,setSelectedUser] = useState(null);
@@ -67,19 +65,13 @@ export default function Chats() {
             activeChatId={selectedChatId}
             onSelectChat={setSelectedChatId}
             onSelectUser={setSelectedUser}
+            typingUsers={typingUsers} // ⌨️
           />
         </div>
       </div>
 
       {/* ---------- MAIN AREA ---------- */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Header */}
-        {/* <div className="h-14 bg-blue-600 text-white flex items-center px-4">
-          <h1 className="text-lg font-semibold">
-            {selectedChatId ? "Chat" : "Chats"}
-          </h1>
-        </div> */}
-
         {/* ---------- MOBILE ---------- */}
         <div className="flex-1 md:hidden bg-white flex flex-col min-h-0">
           {selectedChatId ? (
@@ -94,6 +86,7 @@ export default function Chats() {
               activeChatId={selectedChatId}
               onSelectChat={setSelectedChatId}
               onSelectUser={setSelectedUser}
+              typingUsers={typingUsers} // ⌨️
             />
           )}
         </div>
@@ -112,7 +105,7 @@ export default function Chats() {
 }
 
 // ---------- CHAT LIST ----------
-function ChatList({ chats, activeChatId, onSelectChat, onSelectUser }) {
+function ChatList({ chats, activeChatId, onSelectChat, onSelectUser, typingUsers }) {
   const {selectChat} = useChat();
   if (chats.length === 0) {
     return (
@@ -124,53 +117,58 @@ function ChatList({ chats, activeChatId, onSelectChat, onSelectUser }) {
   //console.log("Rendering ChatList with chats:", chats);
   return (
     <ul className="space-y-1">
-      {chats.map(chat => (
-        <li
-          key={chat.chatId}
-          onClick={() => {
-            onSelectChat(chat.chatId);
-            onSelectUser(chat.user);
-            selectChat(chat);
-          }}
-          className={`flex items-center gap-3 p-3 cursor-pointer rounded-lg transition
-            ${
-              activeChatId === chat.chatId
-                ? "bg-blue-100"
-                : "hover:bg-blue-50"
-            }
-          `}
-        >
-          {/* Avatar */}
-          <div className="relative">
-            <div className="h-12 w-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-bold">
-              {chat.user.name[0]?.toUpperCase()}
+      {chats.map(chat => {
+        const isTyping = typingUsers[chat.chatId]?.length > 0; // ⌨️
+        
+        return (
+          <li
+            key={chat.chatId}
+            onClick={() => {
+              onSelectChat(chat.chatId);
+              onSelectUser(chat.user);
+              selectChat(chat);
+            }}
+            className={`flex items-center gap-3 p-3 cursor-pointer rounded-lg transition
+              ${
+                activeChatId === chat.chatId
+                  ? "bg-blue-100"
+                  : "hover:bg-blue-50"
+              }
+            `}
+          >
+            {/* Avatar */}
+            <div className="relative">
+              <div className="h-12 w-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-bold">
+                {chat.user.name[0]?.toUpperCase()}
+              </div>
+
+              {chat.user.isOnline && (
+                <span className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 border-2 border-white rounded-full"></span>
+              )}
             </div>
 
-            {chat.user.isOnline && (
-              <span className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 border-2 border-white rounded-full"></span>
-            )}
-          </div>
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-center">
+                <p className="font-medium text-gray-800 truncate">
+                  {chat.user.name}
+                </p>
+                <span className="text-xs text-gray-400">
+                  {new Date(chat.lastMessageTime).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  })}
+                </span>
+              </div>
 
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-center">
-              <p className="font-medium text-gray-800 truncate">
-                {chat.user.name}
+              {/* ⌨️ Show typing or last message */}
+              <p className={`text-sm truncate ${isTyping ? "text-blue-500 font-medium italic" : "text-gray-500"}`}>
+                {isTyping ? "typing..." : chat.lastMessage}
               </p>
-              <span className="text-xs text-gray-400">
-                {new Date(chat.lastMessageTime).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit"
-                })}
-              </span>
             </div>
-
-            <p className="text-sm text-gray-500 truncate">
-              {chat.lastMessage}
-            </p>
-          </div>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 }

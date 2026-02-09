@@ -13,11 +13,11 @@ export const useChat = () => {
   }
   return context;
 };
-
 export const ChatProvider = ({ children }) => {
   const { user } = useUser(); // Get current user from auth context
   const socketRef = useRef(null); // socket.io client
   const activeChatRef = useRef(null); // socket.io client
+  const typingTimeoutRef = useRef(null); // ⌨️ typing timeout
   const SOCKET_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/api\/?$/, ""); // socket.io client
   
   const [chats, setChats] = useState([]);
@@ -27,7 +27,7 @@ export const ChatProvider = ({ children }) => {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
-
+  const [typingUsers, setTypingUsers] = useState({}); // ⌨️ { chatId: [userId1, userId2] }
     const joinChat = useCallback((chatId) => { // socket.io client
         if (socketRef.current && chatId) { // socket.io client
           //console.log("Socket", socketRef.current.id, "joining chat", chatId); // socket.io client
@@ -44,61 +44,6 @@ export const ChatProvider = ({ children }) => {
     useEffect(() => { // socket.io client
       activeChatRef.current = activeChat; // socket.io client
     }, [activeChat]); // socket.io client
-
-// useEffect(() => {
-//   if (!socketRef.current) {
-//     socketRef.current = io(SOCKET_URL, {
-//       auth: { token: localStorage.getItem("authToken") },
-//     });
-
-//     // 🔹 receive message
-//     socketRef.current.on("receive-message", (message) => {
-//       setMessages((prev) => {
-//         if (prev.some((m) => m._id === message._id)) return prev;
-//         return [...prev, message];
-//       });
-//     });
-
-//     // 🔹 USER ONLINE / OFFLINE / LAST SEEN
-//     socketRef.current.on("user-status", ({ userId, isOnline, lastSeen }) => {
-//       console.log("👤 user-status:", userId, isOnline, lastSeen);
-
-//       // update chat list
-//       setChats((prevChats) =>
-//         prevChats.map((chat) =>
-//           chat.user._id === userId
-//             ? {
-//                 ...chat,
-//                 user: {
-//                   ...chat.user,
-//                   isOnline,
-//                   lastSeen,
-//                 },
-//               }
-//             : chat
-//         )
-//       );
-
-//       // update active chat header
-//       setActiveChat((prev) => {
-//         if (!prev || prev.user._id !== userId) return prev;
-
-//         return {
-//           ...prev,
-//           user: {
-//             ...prev.user,
-//             isOnline,
-//             lastSeen,
-//           },
-//         };
-//       });
-//     });
-//   }
-
-//   return () => {
-//     socketRef.current?.off("user-status");
-//   };
-// }, [SOCKET_URL]);
 
 useEffect(() => {
   //console.log("🟡 ChatContext socket effect running");
@@ -123,16 +68,7 @@ useEffect(() => {
     });
   }
 
-  // ✅ ALWAYS attach listeners (not only on first creation)
-  //console.log("📡 attaching socket listeners");
 
-  // socketRef.current.on("receive-message", (message) => {
-  //   //console.log("📨 receive-message:", message._id);
-  //   setMessages((prev) => {
-  //     if (prev.some((m) => m._id === message._id)) return prev;
-  //     return [...prev, message];
-  //   });
-  // });
   socketRef.current.on("receive-message", (message) => {
       // update messages
       setMessages((prev) => {
@@ -152,6 +88,20 @@ useEffect(() => {
             : chat
         )
       );
+
+      // ⌨️ Clear typing indicator when message is received
+      setTypingUsers((prev) => {
+        const updated = { ...prev };
+        if (updated[message.chatId]) {
+          updated[message.chatId] = updated[message.chatId].filter(
+            (id) => id !== message.sender
+          );
+          if (updated[message.chatId].length === 0) {
+            delete updated[message.chatId];
+          }
+        }
+        return updated;
+      });
     });
 
 
@@ -192,19 +142,56 @@ useEffect(() => {
       return updatedChat;
 });
   });
+  
+  //console.log("📦 Typing listener mounted (GLOBAL)");
+  // ⌨️ TYPING START LISTENER
+  socketRef.current.on("user-typing", (payload) => {
+    //console.log("⌨️ user-typing RECEIVED:", payload);
+    const { userId, chatId } = payload;
+    setTypingUsers((prev) => {
+      const typingInChat = prev[chatId] || [];
+      if (!typingInChat.includes(userId)) {
+        return {
+          ...prev,
+          [chatId]: [...typingInChat, userId],
+        };
+      }
+      return prev;
+    });
+  });
+
+  // ⌨️ TYPING STOP LISTENER
+  socketRef.current.on("user-typing-stop", (payload) => {
+    const { userId, chatId } = payload;
+    setTypingUsers((prev) => {
+      const typingInChat = prev[chatId] || [];
+      const updated = typingInChat.filter((id) => id !== userId);
+      if (updated.length === 0) {
+        const newTypingUsers = { ...prev };
+        delete newTypingUsers[chatId];
+        return newTypingUsers;
+      }
+      return {
+        ...prev,
+        [chatId]: updated,
+      };
+    });
+  });
 
   return () => {
     console.log("🧹 cleaning up socket listeners");
 
     socketRef.current?.off("receive-message");
     socketRef.current?.off("user-status");
+    socketRef.current?.off("user-typing");
+    socketRef.current?.off("user-typing-stop");
   };
 }, [SOCKET_URL]);
 
 
   // Fetch all chats for the logged-in user
   const fetchChats = useCallback(async () => {
-    console.log("debug fetchChats function is calling");
+    //console.log("debug fetchChats function is calling");
     try {
       setChatsLoading(true);
       setError(null);
@@ -220,7 +207,7 @@ useEffect(() => {
 
   // Fetch messages for a specific chat
   const fetchMessages = useCallback(async (chatId) => {
-    console.log("debug fetchMessages function is calling:", chatId);
+    //console.log("debug fetchMessages function is calling:", chatId);
     if (!chatId) return;
     
     try {
@@ -243,13 +230,10 @@ useEffect(() => {
       setError(null);
       const data = await chatService.sendMessage(receiverPhone, content, type);
       
-      // Add new message to the messages array
-      //setMessages(prev => [...prev, data.message]);
-      // ❌ DO NOT update messages here
-     // socket will deliver message to both sender & receiver
-      
-      // Refresh chat list to update last message
-      //await fetchChats();
+      // ⌨️ Stop typing indicator
+      if (activeChat?.chatId) {
+        socketRef.current?.emit("typing-stop", activeChat.chatId);
+      }
       
       return data.message;
     } catch (err) {
@@ -259,7 +243,7 @@ useEffect(() => {
     } finally {
       setSending(false);
     }
-  }, [fetchChats]);
+  }, [activeChat]);
 
   // Edit an existing message
   const editMessage = useCallback(async (messageId, newContent) => {
@@ -290,6 +274,12 @@ useEffect(() => {
     setActiveChat(chat);
     if (chat && chat.chatId) {
       await fetchMessages(chat.chatId);
+      // ⌨️ Clear typing users for this chat
+      setTypingUsers((prev) => {
+        const updated = { ...prev };
+        delete updated[chat.chatId];
+        return updated;
+      });
     } else {
       setMessages([]);
     }
@@ -315,6 +305,25 @@ useEffect(() => {
     );
   }, []);
 
+  // ⌨️ Handle typing indicator
+  const handleTyping = useCallback(() => {
+    //console.log("debug 1⌨️ handleTyping called");
+    if (!activeChat?.chatId) return;
+    // console.log("debug 2⌨️ handleTyping called");
+    // Emit typing-start
+    socketRef.current?.emit("typing-start", activeChat.chatId);
+
+    // Clear previous timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set timeout to emit typing-stop after 1 second of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      socketRef.current?.emit("typing-stop", activeChat.chatId);
+    }, 1000);
+  }, [activeChat]);
+
   // Initial fetch of chats when user logs in
   useEffect(() => {
     if (user) {
@@ -326,28 +335,6 @@ useEffect(() => {
     }
   }, [user, fetchChats]);
 
-  // const value = useMemo(() => {
-  //   // State
-  //   chats,
-  //   activeChat,
-  //   messages,
-  //   loading,
-  //   error,
-  //   sending,
-    
-  //   // Actions
-  //   fetchChats,
-  //   fetchMessages,
-  //   sendMessage,
-  //   editMessage,
-  //   selectChat,
-  //   clearActiveChat,
-  //   joinChat, // socket.io client
-  //   addMessage,
-  //   updateMessage,
-  //   setError
-  // };
-
 const contextValue = useMemo(() => ({
   chats,
   activeChat,
@@ -356,6 +343,7 @@ const contextValue = useMemo(() => ({
   messagesLoading,
   error,
   sending,
+  typingUsers, // ⌨️
   fetchChats,
   fetchMessages,
   sendMessage,
@@ -365,6 +353,7 @@ const contextValue = useMemo(() => ({
   joinChat,
   addMessage,
   updateMessage,
+  handleTyping, // ⌨️
   setError
 }), [
   chats,
@@ -374,6 +363,7 @@ const contextValue = useMemo(() => ({
   messagesLoading,
   error,
   sending,
+  typingUsers, // ⌨️
   fetchChats,
   fetchMessages,
   sendMessage,
@@ -383,6 +373,7 @@ const contextValue = useMemo(() => ({
   joinChat,
   addMessage,
   updateMessage,
+  handleTyping, // ⌨️
   setError
 ]);
 

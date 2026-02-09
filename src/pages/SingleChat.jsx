@@ -8,6 +8,46 @@ const formatTime = (date) =>
     minute: "2-digit",
   });
 
+// ⌨️ Animated typing indicator component
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-1 px-4 py-2">
+      <style>{`
+        @keyframes bounce {
+          0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.7;
+          }
+          30% {
+            transform: translateY(-10px);
+            opacity: 1;
+          }
+        }
+        .typing-dot {
+          animation: bounce 1.4s infinite;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background-color: #3b82f6;
+          display: inline-block;
+        }
+        .typing-dot:nth-child(1) {
+          animation-delay: 0s;
+        }
+        .typing-dot:nth-child(2) {
+          animation-delay: 0.2s;
+        }
+        .typing-dot:nth-child(3) {
+          animation-delay: 0.4s;
+        }
+      `}</style>
+      <span className="typing-dot"></span>
+      <span className="typing-dot"></span>
+      <span className="typing-dot"></span>
+    </div>
+  );
+}
+
 export default function SingleChat({ chatId, currentUserId, selectedUser }) {
   const {
     messages,
@@ -16,7 +56,9 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
     fetchMessages,
     sendMessage,
     joinChat,  // socket.io client
-    activeChat
+    activeChat,
+    typingUsers, // ⌨️
+    handleTyping, // ⌨️
   } = useChat();
 
   const user = activeChat?.user;
@@ -55,6 +97,14 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
     bottomRef.current?.scrollIntoView({ behavior: "auto" });
   }, [chatId]);
 
+  // ⌨️ Scroll to bottom when typing indicator appears
+  useEffect(() => {
+    if (typingUsers[chatId]?.length > 0) {
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [typingUsers, chatId]);
 
   // ---------- UI STATES ----------
   if (!chatId) {
@@ -94,6 +144,12 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
   } catch (err) {
     console.error("Failed to send message", err);
   }
+};
+
+// ⌨️ Handle input change with typing indicator
+const handleMessageChange = (e) => {
+  setMessage(e.target.value);
+  handleTyping(); // Send typing indicator
 };
 
 function formatLastSeen(lastSeen) {
@@ -138,6 +194,7 @@ function formatLastSeen(lastSeen) {
   return `${date} at ${time}`;
 }
 
+  const isTyping = typingUsers[chatId]?.length > 0; // ⌨️
 
   // ---------- MAIN UI ----------
   return (
@@ -212,6 +269,15 @@ function formatLastSeen(lastSeen) {
           );
         })}
 
+        {/* ⌨️ Show typing indicator */}
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="bg-gray-200 text-gray-800 rounded-lg rounded-bl-none">
+              <TypingIndicator />
+            </div>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
@@ -221,7 +287,7 @@ function formatLastSeen(lastSeen) {
           type="text"
           placeholder="Type a message"
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={handleMessageChange} // ⌨️ Updated
           onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
           className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
