@@ -69,4 +69,37 @@ export const chatService = {
       throw error;
     }
   },
+
+  /**
+   * Create a new chat with a user (optional, can be done implicitly when sending first message)
+   * @param {string} participantPhone - Participant's phone number
+   * @returns {Promise<{success: boolean, chat: Object}>}
+   */
+  createChat: async (name,participantPhone) => {
+    try {
+      const response = await api.post('/chats/create', {
+        name,
+        phone: participantPhone
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error in createChat:', error);
+      throw error;
+    }
+  },
+
+  /** 
+   * Get contacts of the logged-in user
+   * @returns {Promise<{success: boolean, contacts: Array}>}
+   */
+  getContacts: async () => {
+    try {
+      const response = await api.get('/chats/contacts');
+      return response.data;
+    } catch (error) {
+      console.error('Error in getContacts:', error);
+      throw error;
+    }
+  }
+  
 };

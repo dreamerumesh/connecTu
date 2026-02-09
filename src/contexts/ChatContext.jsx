@@ -269,6 +269,21 @@ useEffect(() => {
     }
   }, [fetchChats]);
 
+  const createChat = useCallback(async (name,receiverPhone) => {
+    console.log("debug createChat function is calling with:", name, receiverPhone);
+    try {
+      setError(null);
+      const data = await chatService.createChat(name,receiverPhone);
+      // Refresh chat list to include the new chat
+      await fetchChats();
+      return data.chat;
+    } catch (err) {
+      setError(err.message || 'Failed to create chat');
+      console.error('Error creating chat:', err);
+      throw err;
+      }
+   } , [fetchChats]  );
+
   // Set active chat and fetch its messages
   const selectChat = useCallback(async (chat) => {
     setActiveChat(chat);
@@ -284,6 +299,20 @@ useEffect(() => {
       setMessages([]);
     }
   }, [fetchMessages]);
+
+  // Fetch contacts for the logged-in user
+  const fetchContacts = useCallback(async () => {
+    try {
+      setError(null); 
+      const data = await chatService.getContacts();
+      return data.contacts || [];
+    }
+    catch (err) {
+      setError(err.message || 'Failed to fetch contacts');
+      console.error('Error fetching contacts:', err);
+      throw err;
+    }
+    }, []);
 
   // Clear active chat
   const clearActiveChat = useCallback(() => {
@@ -348,7 +377,9 @@ const contextValue = useMemo(() => ({
   fetchMessages,
   sendMessage,
   editMessage,
+  createChat,
   selectChat,
+  fetchContacts,
   clearActiveChat,
   joinChat,
   addMessage,
@@ -368,7 +399,9 @@ const contextValue = useMemo(() => ({
   fetchMessages,
   sendMessage,
   editMessage,
+  createChat,
   selectChat,
+  fetchContacts,
   clearActiveChat,
   joinChat,
   addMessage,
