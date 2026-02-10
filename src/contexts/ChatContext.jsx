@@ -28,22 +28,26 @@ export const ChatProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
   const [typingUsers, setTypingUsers] = useState({}); // ⌨️ { chatId: [userId1, userId2] }
-    const joinChat = useCallback((chatId) => { // socket.io client
-        if (socketRef.current && chatId) { // socket.io client
-          //console.log("Socket", socketRef.current.id, "joining chat", chatId); // socket.io client
-          socketRef.current.emit("join-chat", chatId); // socket.io client
-        } // socket.io client
-      }, []); // socket.io client
 
-      useEffect(() => {
-      if (activeChat?.chatId) {
-        joinChat(activeChat.chatId);
-      }
-    }, [activeChat?.chatId, joinChat]);
 
-    useEffect(() => { // socket.io client
-      activeChatRef.current = activeChat; // socket.io client
-    }, [activeChat]); // socket.io client
+
+  const joinChat = useCallback((chatId) => { // socket.io client
+      if (socketRef.current && chatId) { // socket.io client
+        //console.log("Socket", socketRef.current.id, "joining chat", chatId); // socket.io client
+        socketRef.current.emit("join-chat", chatId); // socket.io client
+      } // socket.io client
+    }, []); // socket.io client
+
+  useEffect(() => {
+    if (activeChat?.chatId) {
+      joinChat(activeChat.chatId);
+    }
+  }, [activeChat?.chatId, joinChat]);
+
+  useEffect(() => { // socket.io client
+    activeChatRef.current = activeChat; // socket.io client
+    //console.log("✅ Active chat updated:", activeChat);
+  }, [activeChat]); // socket.io client
 
 useEffect(() => {
   //console.log("🟡 ChatContext socket effect running");
@@ -70,11 +74,21 @@ useEffect(() => {
 
 
   socketRef.current.on("receive-message", (message) => {
+   // console.log("📩 received -message:", message);
+    //console.log("Active chat in activeChat:", activeChat);
+   // console.log("Active chat ID in ref:", activeChatRef.current?.chatId);
       // update messages
-      setMessages((prev) => {
-        if (prev.some((m) => m._id === message._id)) return prev;
-        return [...prev, message];
-      });
+      // setMessages((prev) => {
+      //   if (prev.some((m) => m._id === message._id)) return prev;
+      //   return [...prev, message];
+      // });
+     // console.log("bug:",message.chatId === activeChatRef.current?.chatId)
+      if (message.chatId === activeChatRef.current?.chatId) {
+        setMessages(prev => {
+          if (prev.some(m => m._id === message._id)) return prev;
+          return [...prev, message];
+        });
+      }
 
       // ✅ update chat preview (NO API CALL)
       setChats((prevChats) =>
@@ -287,6 +301,7 @@ useEffect(() => {
   // Set active chat and fetch its messages
   const selectChat = useCallback(async (chat) => {
     setActiveChat(chat);
+    //console.log("Selected chat:", activeChat);
     if (chat && chat.chatId) {
       await fetchMessages(chat.chatId);
       // ⌨️ Clear typing users for this chat
@@ -299,6 +314,7 @@ useEffect(() => {
       setMessages([]);
     }
   }, [fetchMessages]);
+
 
   // Fetch contacts for the logged-in user
   const fetchContacts = useCallback(async () => {
