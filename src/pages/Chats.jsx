@@ -118,14 +118,15 @@ return (
                 typingUsers={typingUsers}
               />
             </div>
+            <PlusButton
+              onClick={() => setIsModalOpen(true)}
+              className="fixed bottom-4 right-4 md:hidden z-40"
+            />
           </div>
         )}
 
         {/* Mobile plus button */}
-        <PlusButton
-          onClick={() => setIsModalOpen(true)}
-          className="fixed bottom-4 right-4 md:hidden z-40"
-        />
+        
       </div>
 
       {/* ---------- DESKTOP CHAT ---------- */}
