@@ -74,15 +74,6 @@ useEffect(() => {
 
 
   socketRef.current.on("receive-message", (message) => {
-   // console.log("📩 received -message:", message);
-    //console.log("Active chat in activeChat:", activeChat);
-   // console.log("Active chat ID in ref:", activeChatRef.current?.chatId);
-      // update messages
-      // setMessages((prev) => {
-      //   if (prev.some((m) => m._id === message._id)) return prev;
-      //   return [...prev, message];
-      // });
-     // console.log("bug:",message.chatId === activeChatRef.current?.chatId)
       if (message.chatId === activeChatRef.current?.chatId) {
         setMessages(prev => {
           if (prev.some(m => m._id === message._id)) return prev;
@@ -192,6 +183,21 @@ useEffect(() => {
     });
   });
 
+  // delete message for everyone listener
+  socketRef.current.on("message-deleted-for-everyone", (payload) => {
+    console.log("🗑️ message-deleted-for-everyone RECEIVED:", payload);
+    const { messageId, chatId } = payload;
+    if (chatId === activeChatRef.current?.chatId) {
+      setMessages(prev =>
+        prev.map(msg =>
+          msg._id === messageId
+            ? { ...msg, content: 'This message was deleted for everyone.', isDeletedForEveryone: true }
+            : msg
+        )
+      );
+    }
+  });
+
   return () => {
     console.log("🧹 cleaning up socket listeners");
 
@@ -199,6 +205,7 @@ useEffect(() => {
     socketRef.current?.off("user-status");
     socketRef.current?.off("user-typing");
     socketRef.current?.off("user-typing-stop");
+    socketRef.current?.off("message-deleted-for-everyone");
   };
 }, [SOCKET_URL]);
 
@@ -218,6 +225,16 @@ useEffect(() => {
       setChatsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchChats();
+    } else {
+      setChats([]);
+      setActiveChat(null);
+      setMessages([]);
+    }
+  }, [user, fetchChats]);
 
   // Fetch messages for a specific chat
   const fetchMessages = useCallback(async (chatId) => {
@@ -369,16 +386,53 @@ useEffect(() => {
     }, 1000);
   }, [activeChat]);
 
-  // Initial fetch of chats when user logs in
-  useEffect(() => {
-    if (user) {
-      fetchChats();
-    } else {
-      setChats([]);
-      setActiveChat(null);
-      setMessages([]);
+  const deleteMessageForMe = useCallback(async (messageId) => {
+    try {
+      setError(null);
+      const data = await chatService.deleteMessageForMe(messageId);
+      // Remove the message from the messages array
+      setMessages(prev => prev.filter(msg => msg._id !== messageId));
+      return data;
+    } catch (err) {
+      setError(err.message || 'Failed to delete message for me');
+      console.error('Error deleting message for me:', err);
+      throw err;
     }
-  }, [user, fetchChats]);
+  }, []);
+
+  const deleteMessageForEveryone = useCallback(async (messageId) => {
+    try {
+      setError(null);
+      const data = await chatService.deleteMessageForEveryone(messageId); 
+      // Update the message in the messages array to indicate it's deleted for everyone
+      setMessages(prev =>
+        prev.map(msg =>
+          msg._id === messageId
+            ? { ...msg, content: 'This message was deleted for everyone.', isDeletedForEveryone: true }
+            : msg
+        )
+      );
+      return data;
+    } catch (err) {
+      setError(err.message || 'Failed to delete message for everyone');
+      console.error('Error deleting message for everyone:', err);
+      throw err;
+    }
+  }, []);
+
+  const clearChat = useCallback(async (chatId) => {
+    try {
+      setError(null);
+      const data = await chatService.clearChat(chatId);
+      // Remove all messages from the messages array that belong to this chat
+      setMessages(prev => prev.filter(msg => msg.chatId !== chatId));
+      return data;
+    } catch (err) {
+      setError(err.message || 'Failed to clear chat');
+      console.error('Error clearing chat:', err);
+      throw err;
+    }
+  }, []);
 
 const contextValue = useMemo(() => ({
   chats,
@@ -401,6 +455,9 @@ const contextValue = useMemo(() => ({
   addMessage,
   updateMessage,
   handleTyping, // ⌨️
+  deleteMessageForMe,
+  deleteMessageForEveryone,
+  clearChat,
   setError
 }), [
   chats,
@@ -423,6 +480,9 @@ const contextValue = useMemo(() => ({
   addMessage,
   updateMessage,
   handleTyping, // ⌨️
+  deleteMessageForMe,
+  deleteMessageForEveryone,
+  clearChat,
   setError
 ]);
 

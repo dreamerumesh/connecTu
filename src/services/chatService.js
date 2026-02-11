@@ -100,6 +100,63 @@ export const chatService = {
       console.error('Error in getContacts:', error);
       throw error;
     }
+  },
+
+  /**
+   * Delete a message for the logged-in user
+   * @param {string} messageId - The message ID to delete
+   * @return {Promise<{success: boolean}>}
+   * Note: This will only mark the message as deleted for the user, not for everyone.
+   */
+  deleteMessageForMe: async (messageId) => {  
+    try {
+      const response = await api.delete('/chats/delete-message', {
+        data: { messageId }
+      });
+      return response.data;
+    }
+    catch (error) {
+      console.error('Error in deleteMessageForMe:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a message for everyone (only if the logged-in user is the sender)
+   * @param {string} messageId - The message ID to delete for everyone
+   * @return {Promise<{success: boolean}>}
+   * Note: This will mark the message as deleted for everyone, but only if the logged-in user is the sender of the message.
+   */ 
+  deleteMessageForEveryone: async (messageId) => {
+    try {
+      const response = await api.delete('/chats/delete-message-for-everyone', {
+        data: { messageId }
+      });
+      return response.data;
+    }
+    catch (error) {
+      console.error('Error in deleteMessageForEveryone:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Clear chat history for the logged-in user (only marks messages as deleted for the user, does not delete for everyone)
+   * @param {string} chatId - The chat ID to clear
+   * @return {Promise<{success: boolean}>}
+   * Note: This will mark all messages in the chat as deleted for the logged-in user, but will not delete them for everyone else.
+   */
+  clearChat: async (chatId) => {
+    try {
+      const response = await api.delete('/chats/clear-chat', {
+        data: { chatId }
+      });
+      return response.data;
+    }
+    catch (error) {
+      console.error('Error in clearChat:', error);
+      throw error;
+    } 
   }
   
 };
