@@ -4,6 +4,7 @@ import SingleChat from "./SingleChat"; // ✅ import single chat
 import { useUser } from "../contexts/UserContext";
 import { useChat } from "../contexts/ChatContext";
 import NewChatModal, { PlusButton } from "../components/NewChatModal"; // ✅ import modal and button
+import { useNavigate } from "react-router-dom";
 // ---------- helpers ----------
 const normalizePhone = (phone) =>
   phone?.replace(/\D/g, "").slice(-10);
@@ -12,10 +13,11 @@ const normalizePhone = (phone) =>
 export default function Chats() {
   const { user } = useUser();
   const currentUserId = user?._id;
+  const navigate = useNavigate();
 
   const { chats, chatsLoading, fetchChats, typingUsers } = useChat(); // ✅ get typingUsers
 
-  const [isLoggedIn] = useState(true); // replace with auth context
+  const isLoggedIn = !!user;
   const [selectedChatId, setSelectedChatId] = useState(null); // ✅ NEW
   const [selectedUser ,setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false); // ✅ Modal state
@@ -36,10 +38,17 @@ export default function Chats() {
   // ---------- UI STATES ----------
   if (!isLoggedIn) {
     return (
-      <div className="h-screen flex items-center justify-center bg-blue-50">
-        <p className="text-blue-700 text-lg font-medium">
+      <div className="h-screen flex flex-col items-center justify-center bg-blue-50">
+        <p className="text-blue-700 text-lg font-medium mb-6">
           Login to access your chats 💬
         </p>
+
+        <button
+          onClick={() => navigate("/login")}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition"
+        >
+          Go to Login
+        </button>
       </div>
     );
   }
