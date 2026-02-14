@@ -86,7 +86,8 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }) {
   const handleSelectContact = async (contact) => {
     try {
       setCreatingContact(true);
-      const chat = await createChat(contact.name,contact.phone);
+      const chat = await createChat(contact.name,contact.phone,false);
+      //console.log("Chat created/selected:", chat);
       await selectChat(chat);
 
        onChatCreated(chat, {
@@ -126,7 +127,7 @@ export default function NewChatModal({ isOpen, onClose, onChatCreated }) {
     try {
       setCreatingContact(true);
       setError(null);
-      await createChat(newContactName,newContactPhone);
+      await createChat(newContactName,newContactPhone,true);
       // Reset and close
       setSearchQuery("");
       setNewContactName("");

@@ -4,7 +4,7 @@ import { useUser } from './UserContext'; // Assuming you have an AuthContext
 import { io } from "socket.io-client"; // socket.io client
 import { useMemo } from 'react';
 
-const ChatContext = createContext();
+const ChatContext = createContext(null);
 
 export const useChat = () => {
   const context = useContext(ChatContext);
@@ -58,20 +58,7 @@ useEffect(() => {
     socketRef.current = io(SOCKET_URL, {
       auth: { token: localStorage.getItem("authToken") },
     });
-
-    socketRef.current.on("connect", () => {
-      //console.log("🔌 socket connected:", socketRef.current.id);
-    });
-
-    socketRef.current.on("disconnect", (reason) => {
-      //console.log("❌ socket disconnected:", reason);
-    });
-
-    socketRef.current.on("connect_error", (err) => {
-      //console.log("🔥 socket connect_error:", err.message);
-    });
   }
-
 
   socketRef.current.on("receive-message", (message) => {
       if (message.chatId === activeChatRef.current?.chatId) {
@@ -300,13 +287,15 @@ useEffect(() => {
     }
   }, [fetchChats]);
 
-  const createChat = useCallback(async (name,receiverPhone) => {
-    console.log("debug createChat function is calling with:", name, receiverPhone);
+  const createChat = useCallback(async (name,receiverPhone,isNewContact=false) => {
+    //console.log("debug createChat function is calling with:", name, receiverPhone, isNewContact);
     try {
       setError(null);
-      const data = await chatService.createChat(name,receiverPhone);
+      const data = await chatService.createChat(name,receiverPhone,isNewContact);
       // Refresh chat list to include the new chat
-      await fetchChats();
+      if (isNewContact) {
+        await fetchChats();
+      }
       return data.chat;
     } catch (err) {
       setError(err.message || 'Failed to create chat');
@@ -319,6 +308,8 @@ useEffect(() => {
   const selectChat = useCallback(async (chat) => {
     setActiveChat(chat);
     //console.log("Selected chat:", activeChat);
+    //console.log("Selected chat:", chat);
+    //console.log("Chat ID:", chat?.chatId);
     if (chat && chat.chatId) {
       await fetchMessages(chat.chatId);
       // ⌨️ Clear typing users for this chat

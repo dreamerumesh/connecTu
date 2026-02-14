@@ -12,13 +12,15 @@ const normalizePhone = (phone) =>
 // ---------- component ----------
 export default function Chats() {
   const { user } = useUser();
+  const { activeChat } = useChat();
   const currentUserId = user?._id;
   const navigate = useNavigate();
 
   const { chats, chatsLoading, fetchChats, typingUsers } = useChat(); // ✅ get typingUsers
 
   const isLoggedIn = !!user;
-  const [selectedChatId, setSelectedChatId] = useState(null); // ✅ NEW
+ // const [selectedChatId, setSelectedChatId] = useState(null); // ✅ NEW
+ const selectedChatId = activeChat?.chatId || null; // ✅ derive from context
   const [selectedUser ,setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false); // ✅ Modal state
 
@@ -81,7 +83,7 @@ return (
           <ChatList
             chats={chats}
             activeChatId={selectedChatId}
-            onSelectChat={setSelectedChatId}
+            //onSelectChat={setSelectedChatId}
             onSelectUser={setSelectedUser}
             typingUsers={typingUsers}
           />
@@ -103,9 +105,9 @@ return (
 
         {selectedChatId ? (
           <SingleChat
-            chatId={selectedChatId}
-            currentUserId={currentUserId}
-            selectedUser={selectedUser}
+            //chatId={selectedChatId}
+            //currentUserId={currentUserId}
+            //selectedUser={selectedUser}
           />
         ) : (
           <div className="flex flex-col h-full">
@@ -122,7 +124,7 @@ return (
               <ChatList
                 chats={chats}
                 activeChatId={selectedChatId}
-                onSelectChat={setSelectedChatId}
+                //onSelectChat={setSelectedChatId}
                 onSelectUser={setSelectedUser}
                 typingUsers={typingUsers}
               />
@@ -141,9 +143,9 @@ return (
       {/* ---------- DESKTOP CHAT ---------- */}
       <div className="hidden md:flex flex-1 min-h-0 bg-white">
         <SingleChat
-          chatId={selectedChatId}
-          currentUserId={currentUserId}
-          selectedUser={selectedUser}
+          //chatId={selectedChatId}
+          //currentUserId={currentUserId}
+          //selectedUser={selectedUser}
         />
       </div>
     </div>
@@ -153,7 +155,7 @@ return (
       isOpen={isModalOpen}
       onClose={() => setIsModalOpen(false)}
       onChatCreated={(chat, user) => {
-        setSelectedChatId(chat._id);
+        //setSelectedChatId(chat._id);
         setSelectedUser(user);
         setIsModalOpen(false);
       }}
@@ -168,7 +170,7 @@ return (
 function ChatList({
   chats = [],
   activeChatId,
-  onSelectChat,
+  //onSelectChat,
   onSelectUser,
   typingUsers = {}
 }) {
@@ -184,7 +186,7 @@ function ChatList({
       </div>
     );
   }
-
+  //console.log("Rendering ChatList with chats:", chats[0]);
   return (
     <ul className="h-full overflow-y-auto space-y-1 pr-1">
       {chats.map(chat => {
@@ -195,7 +197,7 @@ function ChatList({
           <li
             key={chat.chatId}
             onClick={() => {
-              onSelectChat(chat.chatId);
+              //onSelectChat(chat.chatId);
               onSelectUser(chat.user);
               selectChat(chat);
             }}

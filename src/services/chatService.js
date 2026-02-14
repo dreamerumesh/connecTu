@@ -75,11 +75,12 @@ export const chatService = {
    * @param {string} participantPhone - Participant's phone number
    * @returns {Promise<{success: boolean, chat: Object}>}
    */
-  createChat: async (name,participantPhone) => {
+  createChat: async (name,participantPhone,isNewContact=false) => {
     try {
       const response = await api.post('/chats/create', {
         name,
-        phone: participantPhone
+        phone: participantPhone,
+        isNewContact
       });
       return response.data;
     } catch (error) {

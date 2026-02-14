@@ -1,5 +1,7 @@
 import { useEffect, useCallback, useContext, useRef, useState } from "react";
 import { useChat } from "../contexts/ChatContext";
+import { useUser } from "../contexts/UserContext";
+import { IoIosArrowDown,IoMdSend  } from 'react-icons/io';
 
 // helper: format time
 const formatTime = (date) =>
@@ -48,7 +50,7 @@ function TypingIndicator() {
   );
 }
 
-export default function SingleChat({ chatId, currentUserId, selectedUser }) {
+export default function SingleChat() {
   const {
     messages,
     messagesLoading,
@@ -64,8 +66,16 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
     clearChat,
   } = useChat();
 
-  const user = activeChat?.user;
+  const { user } = useUser();
 
+  //const user = activeChat?.user;
+  const chatId = activeChat?.chatId;
+  const selectedUser = activeChat?.user;
+  const currentUserId = user?._id;
+  //console.log("Active chat user selec:", activeChat);
+ // console.log("Chat id", chatId);
+  //console.log("Current user id", currentUserId);
+  // console.log("Selected user", selectedUser);
   const bottomRef = useRef(null);
   const lastFetchedChatRef = useRef(null);
   const messageMenuRef = useRef(null);
@@ -73,6 +83,7 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
   const longPressTimerRef = useRef(null);
 
   const [message, setMessage] = useState("");
+   const textareaRef = useRef(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
   const [showChatMenu, setShowChatMenu] = useState(false);
@@ -180,6 +191,33 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
       </div>
     );
   }
+  // ⌨️ Handle input change with typing indicator
+  const handleMessageChange = (e) => {
+    setMessage(e.target.value);
+    handleTyping();
+    
+    // Auto-resize textarea
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      const maxHeight = window.innerWidth < 768 ? 120 : 144;
+      textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    // Desktop: Enter sends, Shift+Enter new line
+    // Mobile: Enter creates new line (natural textarea behavior)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const isMobile = window.innerWidth < 768 || 
+                       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (!isMobile) {
+        e.preventDefault();
+        handleSendMessage();
+      }
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
@@ -187,16 +225,20 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
     try {
       await sendMessage(selectedUser?.phone, message, "text");
       setMessage("");
+      
     } catch (err) {
       console.error("Failed to send message", err);
+    }
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
     }
   };
 
   // ⌨️ Handle input change with typing indicator
-  const handleMessageChange = (e) => {
-    setMessage(e.target.value);
-    handleTyping();
-  };
+  // const handleMessageChange = (e) => {
+  //   setMessage(e.target.value);
+  //   handleTyping();
+  // };
 
   function formatLastSeen(lastSeen) {
     if (!lastSeen) return "";
@@ -362,13 +404,13 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
                   {selectedUser?.name}
                 </span>
                 <span className="text-xs text-gray-500 truncate">
-                  {user?.isOnline ? (
+                  {selectedUser?.isOnline ? (
                     <span className="flex items-center gap-1">
                       <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                       Online
                     </span>
-                  ) : user?.lastSeen ? (
-                    `Last seen ${formatLastSeen(user.lastSeen)}`
+                  ) : selectedUser?.lastSeen ? (
+                    `Last seen ${formatLastSeen(selectedUser.lastSeen)}`
                   ) : (
                     "Offline"
                   )}
@@ -455,67 +497,61 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
           {messages.map((msg, index) => {
             const isMe = msg.sender === currentUserId;
             const isLastMessage = index === messages.length - 1;
-            const shouldShowAbove = messages.length > 2 && index >= messages.length - 2; 
+            const shouldShowAbove = messages.length > 2 && index >= messages.length - 2;
 
             return (
               <div key={msg._id} className="flex flex-col group relative">
-                <div
-                  className={`flex ${isMe ? "justify-end" : "justify-start"}`}
-                >
-                  <div className="flex items-end gap-1 md:gap-2 max-w-[85%] md:max-w-md">
+                <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                  <div className="flex items-end gap-1 md:gap-2 max-w-[85%] md:max-w-[70%]">
                     {/* Message Bubble */}
                     <div
-                      onTouchStart={() => handleTouchStart(msg)}
-                      onTouchEnd={handleTouchEnd}
-                      onTouchMove={handleTouchEnd}
-                      className={`px-3 md:px-4 py-2 md:py-2.5 rounded-2xl text-sm md:text-base shadow-sm relative
+                      className={`relative px-2 md:px-3 md:py-1 rounded-2xl text-sm md:text-base shadow-sm
                         ${
                           isMe
                             ? "bg-blue-500 text-white rounded-br-md"
-                            : "bg-white text-gray-800 rounded-bl-md"
-                        }
-                        ${
-                          selectedMessage?._id === msg._id
-                            ? "ring-2 ring-blue-400"
-                            : ""
+                            : "bg-white text-gray-800 rounded-bl-md"    
                         }
                       `}
                     >
-                      <p className="whitespace-pre-wrap break-words">
-                        {msg.content}
-                      </p>
-
-                      <div
-                        className={`text-[10px] md:text-xs mt-1 text-right ${
-                          isMe ? "text-blue-100" : "text-gray-500"
-                        }`}
+                      {/* Arrow Button - Top Right Corner */}
+                      <button
+                        onClick={() =>
+                          setShowMessageMenu(
+                            showMessageMenu === msg._id ? null : msg._id
+                          )
+                        }
+                        className={`absolute -top-1 -right-1 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center transition-all
+                          ${
+                            isMe
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
+                              : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                          }
+                          md:opacity-0 md:group-hover:opacity-100
+                          shadow-sm hover:shadow-md
+                        `}
                       >
-                        {formatTime(msg.createdAt)}
+                        <IoIosArrowDown className="w-3 h-3 md:w-4 md:h-4" />
+                      </button>
+
+                      {/* Message Content with Time */}
+                      <div className="pr-1">
+                        <p className="whitespace-pre-wrap break-words inline">
+                          {msg.content}
+                        </p>
+                        <span
+                          className={`text-[10px] md:text-xs ml-2 whitespace-nowrap inline-block align-bottom ${
+                            isMe ? "text-blue-100" : "text-gray-500"
+                          }`}
+                        >
+                          {formatTime(msg.createdAt)}
+                        </span>
                       </div>
                     </div>
-
-                    {/* Desktop: Arrow Button */}
-                    <button
-                      onClick={() =>
-                        setShowMessageMenu(
-                          showMessageMenu === msg._id ? null : msg._id
-                        )
-                      }
-                      className="hidden md:block text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M7 10l5 5 5-5z" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
 
-                {/* Desktop: Floating Dropdown Menu */}
-                {showMessageMenu === msg._id && !isMobile && (
+                {/* Floating Dropdown Menu */}
+                {showMessageMenu === msg._id && (
                   <div
                     className={`absolute ${isMe ? "right-0" : "left-0"} ${
                       shouldShowAbove ? "bottom-full mb-1" : "top-full mt-1"
@@ -572,26 +608,6 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
                           Delete for everyone
                         </div>
                       )}
-
-                      {/* <div
-                        onClick={() => setShowMessageMenu(null)}
-                        className="px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-50 cursor-pointer flex items-center gap-3 transition-colors border-t border-gray-100"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                        Cancel
-                      </div> */}
                     </div>
                   </div>
                 )}
@@ -614,35 +630,31 @@ export default function SingleChat({ chatId, currentUserId, selectedUser }) {
 
       {/* ================= INPUT ================= */}
       <div className="bg-white border-t px-3 md:px-6 py-3 md:py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-2 md:gap-4">
-          <input
-            type="text"
-            placeholder="Type a message..."
-            value={message}
-            onChange={handleMessageChange}
-            onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-            className="flex-1 bg-gray-100 rounded-full px-4 md:px-5 py-2 md:py-2.5 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-          />
+        <div className="max-w-4xl mx-auto flex items-end gap-2 md:gap-4">
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              placeholder="Type a message..."
+              value={message}
+              onChange={handleMessageChange}
+              onKeyDown={handleKeyDown}
+              rows={1}
+              className="w-full bg-gray-100 rounded-2xl px-4 md:px-5 py-2.5 md:py-3 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none overflow-y-auto"
+              style={{
+                maxHeight: typeof window !== 'undefined' && window.innerWidth < 768 ? '120px' : '144px',
+                minHeight: '44px',
+                lineHeight: '1.5'
+              }}
+            />
+          </div>
 
           <button
             onClick={handleSendMessage}
             disabled={!message.trim()}
-            className="bg-blue-500 text-white p-2.5 md:px-6 md:py-2.5 rounded-full hover:bg-blue-600 active:bg-blue-700 transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="bg-blue-500 text-white p-2.5 md:px-6 md:py-2.5 rounded-full hover:bg-blue-600 active:bg-blue-700 transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 mb-0.5"
           >
             <span className="hidden md:inline">Send</span>
-            <svg
-              className="w-5 h-5 md:hidden"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-              />
-            </svg>
+            <IoMdSend className="w-5 h-5 md:hidden md:w-6 md:h-6" />
           </button>
         </div>
       </div>
