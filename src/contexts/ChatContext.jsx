@@ -19,7 +19,7 @@ export const ChatProvider = ({ children }) => {
   const activeChatRef = useRef(null); // socket.io client
   const typingTimeoutRef = useRef(null); // ⌨️ typing timeout
   const SOCKET_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/api\/?$/, ""); // socket.io client
-  
+
   const [chats, setChats] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -32,11 +32,11 @@ export const ChatProvider = ({ children }) => {
 
 
   const joinChat = useCallback((chatId) => { // socket.io client
-      if (socketRef.current && chatId) { // socket.io client
-        //console.log("Socket", socketRef.current.id, "joining chat", chatId); // socket.io client
-        socketRef.current.emit("join-chat", chatId); // socket.io client
-      } // socket.io client
-    }, []); // socket.io client
+    if (socketRef.current && chatId) { // socket.io client
+      //console.log("Socket", socketRef.current.id, "joining chat", chatId); // socket.io client
+      socketRef.current.emit("join-chat", chatId); // socket.io client
+    } // socket.io client
+  }, []); // socket.io client
 
   useEffect(() => {
     if (activeChat?.chatId) {
@@ -49,18 +49,31 @@ export const ChatProvider = ({ children }) => {
     //console.log("✅ Active chat updated:", activeChat);
   }, [activeChat]); // socket.io client
 
-useEffect(() => {
-  //console.log("🟡 ChatContext socket effect running");
+  useEffect(() => {
+    //console.log("🟡 ChatContext socket effect running");
 
-  if (!socketRef.current) {
-    //console.log("🟢 creating socket connection");
+    if (!socketRef.current) {
+      //console.log("🟢 creating socket connection");
 
-    socketRef.current = io(SOCKET_URL, {
-      auth: { token: localStorage.getItem("authToken") },
-    });
-  }
+      socketRef.current = io(SOCKET_URL, {
+        auth: { token: localStorage.getItem("authToken") },
+      });
+    }
 
-  socketRef.current.on("receive-message", (message) => {
+    socketRef.current.on("receive-message", (message) => {
+      // 🟢 1. Emit Delivered Status (always, if socket connected)
+      socketRef.current?.emit("message_delivered", {
+        messageId: message._id,
+        chatId: message.chatId
+      });
+
+      // 🟢 2. If Active Chat, Emit Read Status immediately
+      if (message.chatId === activeChatRef.current?.chatId) {
+        socketRef.current?.emit("mark_messages_read", {
+          chatId: message.chatId
+        });
+      }
+
       if (message.chatId === activeChatRef.current?.chatId) {
         setMessages(prev => {
           if (prev.some(m => m._id === message._id)) return prev;
@@ -73,10 +86,10 @@ useEffect(() => {
         prevChats.map((chat) =>
           chat.chatId === message.chatId
             ? {
-                ...chat,
-                lastMessage: message.content,
-                lastMessageTime: message.createdAt,
-              }
+              ...chat,
+              lastMessage: message.content,
+              lastMessageTime: message.createdAt,
+            }
             : chat
         )
       );
@@ -97,15 +110,15 @@ useEffect(() => {
     });
 
 
-  socketRef.current.on("user-status", (payload) => {
-    //console.log("👤 user-status RECEIVED:", payload);
+    socketRef.current.on("user-status", (payload) => {
+      //console.log("👤 user-status RECEIVED:", payload);
 
-    const { userId, isOnline, lastSeen } = payload;
+      const { userId, isOnline, lastSeen } = payload;
 
-    setChats((prevChats) =>
-      prevChats.map((chat) =>
-        chat.user._id === userId
-          ? {
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat.user._id === userId
+            ? {
               ...chat,
               user: {
                 ...chat.user,
@@ -113,88 +126,131 @@ useEffect(() => {
                 lastSeen,
               },
             }
-          : chat
-      )
-    );
-
-    setActiveChat((prev) => {
-      if (!prev || prev.user._id !== userId) return prev;
-
-      const updatedChat = {
-        ...prev,
-        user: {
-          ...prev.user,
-          isOnline,
-          lastSeen,
-        },
-      };
-
-      //console.log("Updated activeChat:", updatedChat);
-
-      return updatedChat;
-});
-  });
-  
-  //console.log("📦 Typing listener mounted (GLOBAL)");
-  // ⌨️ TYPING START LISTENER
-  socketRef.current.on("user-typing", (payload) => {
-    //console.log("⌨️ user-typing RECEIVED:", payload);
-    const { userId, chatId } = payload;
-    setTypingUsers((prev) => {
-      const typingInChat = prev[chatId] || [];
-      if (!typingInChat.includes(userId)) {
-        return {
-          ...prev,
-          [chatId]: [...typingInChat, userId],
-        };
-      }
-      return prev;
-    });
-  });
-
-  // ⌨️ TYPING STOP LISTENER
-  socketRef.current.on("user-typing-stop", (payload) => {
-    const { userId, chatId } = payload;
-    setTypingUsers((prev) => {
-      const typingInChat = prev[chatId] || [];
-      const updated = typingInChat.filter((id) => id !== userId);
-      if (updated.length === 0) {
-        const newTypingUsers = { ...prev };
-        delete newTypingUsers[chatId];
-        return newTypingUsers;
-      }
-      return {
-        ...prev,
-        [chatId]: updated,
-      };
-    });
-  });
-
-  // delete message for everyone listener
-  socketRef.current.on("message-deleted-for-everyone", (payload) => {
-    console.log("🗑️ message-deleted-for-everyone RECEIVED:", payload);
-    const { messageId, chatId } = payload;
-    if (chatId === activeChatRef.current?.chatId) {
-      setMessages(prev =>
-        prev.map(msg =>
-          msg._id === messageId
-            ? { ...msg, content: 'This message was deleted for everyone.', isDeletedForEveryone: true }
-            : msg
+            : chat
         )
       );
-    }
-  });
 
-  return () => {
-    console.log("🧹 cleaning up socket listeners");
+      setActiveChat((prev) => {
+        if (!prev || prev.user._id !== userId) return prev;
 
-    socketRef.current?.off("receive-message");
-    socketRef.current?.off("user-status");
-    socketRef.current?.off("user-typing");
-    socketRef.current?.off("user-typing-stop");
-    socketRef.current?.off("message-deleted-for-everyone");
-  };
-}, [SOCKET_URL]);
+        const updatedChat = {
+          ...prev,
+          user: {
+            ...prev.user,
+            isOnline,
+            lastSeen,
+          },
+        };
+
+        //console.log("Updated activeChat:", updatedChat);
+
+        return updatedChat;
+      });
+    });
+
+    //console.log("📦 Typing listener mounted (GLOBAL)");
+    // ⌨️ TYPING START LISTENER
+    socketRef.current.on("user-typing", (payload) => {
+      //console.log("⌨️ user-typing RECEIVED:", payload);
+      const { userId, chatId } = payload;
+      setTypingUsers((prev) => {
+        const typingInChat = prev[chatId] || [];
+        if (!typingInChat.includes(userId)) {
+          return {
+            ...prev,
+            [chatId]: [...typingInChat, userId],
+          };
+        }
+        return prev;
+      });
+    });
+
+    // ⌨️ TYPING STOP LISTENER
+    socketRef.current.on("user-typing-stop", (payload) => {
+      const { userId, chatId } = payload;
+      setTypingUsers((prev) => {
+        const typingInChat = prev[chatId] || [];
+        const updated = typingInChat.filter((id) => id !== userId);
+        if (updated.length === 0) {
+          const newTypingUsers = { ...prev };
+          delete newTypingUsers[chatId];
+          return newTypingUsers;
+        }
+        return {
+          ...prev,
+          [chatId]: updated,
+        };
+      });
+    });
+
+    // delete message for everyone listener
+    socketRef.current.on("message-deleted-for-everyone", (payload) => {
+      console.log("🗑️ message-deleted-for-everyone RECEIVED:", payload);
+      const { messageId, chatId } = payload;
+      if (chatId === activeChatRef.current?.chatId) {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg._id === messageId
+              ? { ...msg, content: 'This message was deleted for everyone.', isDeletedForEveryone: true }
+              : msg
+          )
+        );
+      }
+    });
+
+    // 📨 MESSAGE DELIVERED LISTENER
+    socketRef.current.on("message_delivered", (payload) => {
+      // console.log("📨 message_delivered RECEIVED:", payload);
+      const { messageId, chatId, status } = payload;
+
+      // Update in messages list (if active chat)
+      if (chatId === activeChatRef.current?.chatId) {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg._id === messageId ? { ...msg, status } : msg
+          )
+        );
+      }
+
+      // Update in chat list (last message status) - optional, but good for UI
+      setChats(prev =>
+        prev.map(chat =>
+          chat.chatId === chatId && chat.lastMessage === messageId // strict check might be hard if we don't store lastMessageId
+            ? { ...chat } // complex to update last message status in chat list without message ID in chat obj
+            : chat
+        )
+      );
+    });
+
+    // 📖 MESSAGES READ LISTENER
+    socketRef.current.on("messages_read", (payload) => {
+      // console.log("📖 messages_read RECEIVED:", payload);
+      const { chatId, readBy } = payload;
+
+      // Update all messages in active chat to 'read'
+      if (chatId === activeChatRef.current?.chatId) {
+        setMessages(prev =>
+          prev.map(msg =>
+            // only update if receiver is the one who read it (or just update all 'sent'/'delivered' to 'read' if I am the sender)
+            // For 1-on-1, if the other person read it, ALL my messages to them are read.
+            msg.sender !== readBy && msg.status !== 'read'
+              ? { ...msg, status: 'read' }
+              : msg
+          )
+        );
+      }
+    });
+
+    return () => {
+      console.log("🧹 cleaning up socket listeners");
+
+      socketRef.current?.off("receive-message");
+      socketRef.current?.off("user-status");
+      socketRef.current?.off("user-typing");
+      socketRef.current?.off("user-typing-stop");
+      socketRef.current?.off("message-deleted-for-everyone");
+    };
+  }, [SOCKET_URL]);
 
 
   // Fetch all chats for the logged-in user
@@ -227,7 +283,7 @@ useEffect(() => {
   const fetchMessages = useCallback(async (chatId) => {
     //console.log("debug fetchMessages function is calling:", chatId);
     if (!chatId) return;
-    
+
     try {
       setMessagesLoading(true);
       setError(null);
@@ -247,12 +303,12 @@ useEffect(() => {
       setSending(true);
       setError(null);
       const data = await chatService.sendMessage(receiverPhone, content, type);
-      
+
       // ⌨️ Stop typing indicator
       if (activeChat?.chatId) {
         socketRef.current?.emit("typing-stop", activeChat.chatId);
       }
-      
+
       return data.message;
     } catch (err) {
       setError(err.message || 'Failed to send message');
@@ -268,17 +324,17 @@ useEffect(() => {
     try {
       setError(null);
       const data = await chatService.editMessage(messageId, newContent);
-      
+
       // Update the message in the messages array
-      setMessages(prev => 
-        prev.map(msg => 
+      setMessages(prev =>
+        prev.map(msg =>
           msg._id === messageId ? data.message : msg
         )
       );
-      
+
       // Refresh chat list to update last message if needed
       await fetchChats();
-      
+
       return data.message;
     } catch (err) {
       setError(err.message || 'Failed to edit message');
@@ -287,11 +343,11 @@ useEffect(() => {
     }
   }, [fetchChats]);
 
-  const createChat = useCallback(async (name,receiverPhone,isNewContact=false) => {
+  const createChat = useCallback(async (name, receiverPhone, isNewContact = false) => {
     //console.log("debug createChat function is calling with:", name, receiverPhone, isNewContact);
     try {
       setError(null);
-      const data = await chatService.createChat(name,receiverPhone,isNewContact);
+      const data = await chatService.createChat(name, receiverPhone, isNewContact);
       // Refresh chat list to include the new chat
       if (isNewContact) {
         await fetchChats();
@@ -301,8 +357,8 @@ useEffect(() => {
       setError(err.message || 'Failed to create chat');
       console.error('Error creating chat:', err);
       throw err;
-      }
-   } , [fetchChats]  );
+    }
+  }, [fetchChats]);
 
   // Set active chat and fetch its messages
   const selectChat = useCallback(async (chat) => {
@@ -311,6 +367,9 @@ useEffect(() => {
     //console.log("Selected chat:", chat);
     //console.log("Chat ID:", chat?.chatId);
     if (chat && chat.chatId) {
+      // 🟢 Emit Read Status when opening chat
+      socketRef.current?.emit("mark_messages_read", { chatId: chat.chatId });
+
       await fetchMessages(chat.chatId);
       // ⌨️ Clear typing users for this chat
       setTypingUsers((prev) => {
@@ -327,7 +386,7 @@ useEffect(() => {
   // Fetch contacts for the logged-in user
   const fetchContacts = useCallback(async () => {
     try {
-      setError(null); 
+      setError(null);
       const data = await chatService.getContacts();
       return data.contacts || [];
     }
@@ -336,7 +395,7 @@ useEffect(() => {
       console.error('Error fetching contacts:', err);
       throw err;
     }
-    }, []);
+  }, []);
 
   // Clear active chat
   const clearActiveChat = useCallback(() => {
@@ -351,8 +410,8 @@ useEffect(() => {
 
   // Update a message in the current chat (useful for real-time updates)
   const updateMessage = useCallback((messageId, updates) => {
-    setMessages(prev => 
-      prev.map(msg => 
+    setMessages(prev =>
+      prev.map(msg =>
         msg._id === messageId ? { ...msg, ...updates } : msg
       )
     );
@@ -394,7 +453,7 @@ useEffect(() => {
   const deleteMessageForEveryone = useCallback(async (messageId) => {
     try {
       setError(null);
-      const data = await chatService.deleteMessageForEveryone(messageId); 
+      const data = await chatService.deleteMessageForEveryone(messageId);
       // Update the message in the messages array to indicate it's deleted for everyone
       setMessages(prev =>
         prev.map(msg =>
@@ -425,57 +484,57 @@ useEffect(() => {
     }
   }, []);
 
-const contextValue = useMemo(() => ({
-  chats,
-  activeChat,
-  messages,
-  chatsLoading,
-  messagesLoading,
-  error,
-  sending,
-  typingUsers, // ⌨️
-  fetchChats,
-  fetchMessages,
-  sendMessage,
-  editMessage,
-  createChat,
-  selectChat,
-  fetchContacts,
-  clearActiveChat,
-  joinChat,
-  addMessage,
-  updateMessage,
-  handleTyping, // ⌨️
-  deleteMessageForMe,
-  deleteMessageForEveryone,
-  clearChat,
-  setError
-}), [
-  chats,
-  activeChat,
-  messages,
-  chatsLoading,
-  messagesLoading,
-  error,
-  sending,
-  typingUsers, // ⌨️
-  fetchChats,
-  fetchMessages,
-  sendMessage,
-  editMessage,
-  createChat,
-  selectChat,
-  fetchContacts,
-  clearActiveChat,
-  joinChat,
-  addMessage,
-  updateMessage,
-  handleTyping, // ⌨️
-  deleteMessageForMe,
-  deleteMessageForEveryone,
-  clearChat,
-  setError
-]);
+  const contextValue = useMemo(() => ({
+    chats,
+    activeChat,
+    messages,
+    chatsLoading,
+    messagesLoading,
+    error,
+    sending,
+    typingUsers, // ⌨️
+    fetchChats,
+    fetchMessages,
+    sendMessage,
+    editMessage,
+    createChat,
+    selectChat,
+    fetchContacts,
+    clearActiveChat,
+    joinChat,
+    addMessage,
+    updateMessage,
+    handleTyping, // ⌨️
+    deleteMessageForMe,
+    deleteMessageForEveryone,
+    clearChat,
+    setError
+  }), [
+    chats,
+    activeChat,
+    messages,
+    chatsLoading,
+    messagesLoading,
+    error,
+    sending,
+    typingUsers, // ⌨️
+    fetchChats,
+    fetchMessages,
+    sendMessage,
+    editMessage,
+    createChat,
+    selectChat,
+    fetchContacts,
+    clearActiveChat,
+    joinChat,
+    addMessage,
+    updateMessage,
+    handleTyping, // ⌨️
+    deleteMessageForMe,
+    deleteMessageForEveryone,
+    clearChat,
+    setError
+  ]);
 
   return (
     <ChatContext.Provider value={contextValue}>

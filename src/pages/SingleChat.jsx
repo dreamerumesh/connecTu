@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useContext, useRef, useState } from "react";
 import { useChat } from "../contexts/ChatContext";
 import { useUser } from "../contexts/UserContext";
-import { IoIosArrowDown, IoMdSend } from 'react-icons/io';
+import { IoIosArrowDown, IoMdSend, IoMdCheckmark, IoMdDoneAll } from 'react-icons/io';
 
 // helper: format time
 const formatTime = (date) =>
@@ -539,63 +539,51 @@ export default function SingleChat() {
                           {msg.content}
                         </span>
                         <span
-                          className={`text-[10px] md:text-xs ml-2 whitespace-nowrap ${isMe ? "text-blue-100" : "text-gray-500"
+                          className={`text-[10px] md:text-xs ml-2 whitespace-nowrap flex items-center gap-0.5 ${isMe ? "text-blue-100" : "text-gray-500"
                             }`}
                           style={{
                             paddingBottom: '1px', // Moves it slightly below baseline
-                            lineHeight: '1'
+                            lineHeight: '1',
                           }}
                         >
                           {formatTime(msg.createdAt)}
+                          {isMe && (
+                            <span className="ml-[2px] flex items-center">
+                              {msg.status === "read" ? (
+                                <IoMdDoneAll className="text-green-300 w-4 h-4 md:w-5 md:h-5" />
+                              ) : msg.status === "delivered" ? (
+                                <IoMdDoneAll className="text-blue-200 w-4 h-4 md:w-5 md:h-5" />
+                              ) : (
+                                <IoMdCheckmark className="text-blue-200 w-4 h-4 md:w-5 md:h-5" />
+                              )}
+                            </span>
+                          )}
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Floating Dropdown Menu */}
-                {showMessageMenu === msg._id && (
-                  <div
-                    className={`absolute ${isMe ? "right-0" : "left-0"} ${shouldShowAbove ? "bottom-full mb-1" : "top-full mt-1"
-                      } z-50`}
-                  >
+
+                {
+                  showMessageMenu === msg._id && (
                     <div
-                      ref={messageMenuRef}
-                      className="w-48 bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden"
+                      className={`absolute ${isMe ? "right-0" : "left-0"} ${shouldShowAbove ? "bottom-full mb-1" : "top-full mt-1"
+                        } z-50`}
                     >
                       <div
-                        onClick={() => {
-                          deleteMessageForMe(msg._id);
-                          setShowMessageMenu(null);
-                        }}
-                        className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center gap-3 transition-colors"
+                        ref={messageMenuRef}
+                        className="w-48 bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden"
                       >
-                        <svg
-                          className="w-4 h-4 text-gray-500"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                        Delete for me
-                      </div>
-
-                      {msg.sender === currentUserId && (
                         <div
                           onClick={() => {
-                            deleteMessageForEveryone(msg._id);
+                            deleteMessageForMe(msg._id);
                             setShowMessageMenu(null);
                           }}
-                          className="px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 cursor-pointer flex items-center gap-3 transition-colors border-t border-gray-100"
+                          className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center gap-3 transition-colors"
                         >
                           <svg
-                            className="w-4 h-4"
+                            className="w-4 h-4 text-gray-500"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -607,12 +595,37 @@ export default function SingleChat() {
                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                             />
                           </svg>
-                          Delete for everyone
+                          Delete for me
                         </div>
-                      )}
+
+                        {msg.sender === currentUserId && (
+                          <div
+                            onClick={() => {
+                              deleteMessageForEveryone(msg._id);
+                              setShowMessageMenu(null);
+                            }}
+                            className="px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 cursor-pointer flex items-center gap-3 transition-colors border-t border-gray-100"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                            Delete for everyone
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )
+                }
               </div>
             );
           })}
