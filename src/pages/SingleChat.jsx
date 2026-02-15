@@ -223,7 +223,7 @@ export default function SingleChat() {
     if (!message.trim()) return;
 
     try {
-      await sendMessage(selectedUser?.phone, message, "text");
+      await sendMessage(selectedUser?.phone, message.trim(), "text");
       setMessage("");
       
     } catch (err) {
@@ -345,7 +345,7 @@ export default function SingleChat() {
   return (
     <div className="flex flex-col h-full w-full bg-[#e5ddd5] md:bg-[#f0f2f5]">
       {/* ================= HEADER ================= */}
-      <div className="h-14 md:h-16 bg-white border-b flex items-center justify-between px-3 md:px-6 shadow-sm" style={{ width: '100%', maxWidth: '100vw', overflow: 'hidden' }}>
+      <div className="h-14 md:h-16 bg-white border-b flex items-center justify-between px-3 md:px-6 shadow-sm relative z-[100]" style={{ width: '100%', maxWidth: '100vw', overflow: 'visible' }}>
         {selectedMessage ? (
           // Mobile selection mode header
           <>
@@ -420,7 +420,7 @@ export default function SingleChat() {
       </div>
 
       {/* Three Dots Menu */}
-      <div ref={chatMenuRef} className="relative flex-shrink-0" style={{ marginLeft: '8px' }}>
+      <div ref={chatMenuRef} className="relative flex-shrink-0 z-[100]" style={{ marginLeft: '8px',zIndex: 9999 }}>
               <button
                 onClick={() => setShowChatMenu(!showChatMenu)}
                 className="text-gray-600 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -436,7 +436,8 @@ export default function SingleChat() {
               </button>
 
               {showChatMenu && (
-                <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden z-50">
+                <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden"
+                 style={{ zIndex: 9999 }}>
                   <div
                     onClick={() => {
                       clearChat(chatId);
@@ -534,16 +535,19 @@ export default function SingleChat() {
                       >
                         <IoIosArrowDown className="w-3 h-3 md:w-4 md:h-4" />
                       </button>
-
                       {/* Message Content with Time */}
-                      <div className="pr-1">
-                        <p className="whitespace-pre-wrap break-words inline">
+                      <div className="pr-1 inline-flex items-end flex-wrap">
+                        <span className="whitespace-pre-wrap break-words">
                           {msg.content}
-                        </p>
+                        </span>
                         <span
-                          className={`text-[10px] md:text-xs ml-2 whitespace-nowrap inline-block align-bottom ${
+                          className={`text-[10px] md:text-xs ml-2 whitespace-nowrap ${
                             isMe ? "text-blue-100" : "text-gray-500"
                           }`}
+                          style={{ 
+                            paddingBottom: '1px', // Moves it slightly below baseline
+                            lineHeight: '1'
+                          }}
                         >
                           {formatTime(msg.createdAt)}
                         </span>
