@@ -5,6 +5,7 @@ import { useUser } from "../contexts/UserContext";
 import { useChat } from "../contexts/ChatContext";
 import NewChatModal, { PlusButton } from "../components/NewChatModal"; // ✅ import modal and button
 import { useNavigate } from "react-router-dom";
+
 // ---------- helpers ----------
 const normalizePhone = (phone) =>
   phone?.replace(/\D/g, "").slice(-10);
@@ -19,9 +20,9 @@ export default function Chats() {
   const { chats, chatsLoading, fetchChats, typingUsers } = useChat(); // ✅ get typingUsers
 
   const isLoggedIn = !!user;
- // const [selectedChatId, setSelectedChatId] = useState(null); // ✅ NEW
- const selectedChatId = activeChat?.chatId || null; // ✅ derive from context
-  const [selectedUser ,setSelectedUser] = useState(null);
+  // const [selectedChatId, setSelectedChatId] = useState(null); // ✅ NEW
+  const selectedChatId = activeChat?.chatId || null; // ✅ derive from context
+  const [selectedUser, setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false); // ✅ Modal state
 
   // 🔹 MOCK phone contacts (web limitation)
@@ -40,7 +41,7 @@ export default function Chats() {
   // ---------- UI STATES ----------
   if (!isLoggedIn) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-blue-50">
+      <div className="h-[100dvh] flex flex-col items-center justify-center bg-blue-50">
         <p className="text-blue-700 text-lg font-medium mb-6">
           Login to access your chats 💬
         </p>
@@ -57,110 +58,112 @@ export default function Chats() {
   //console.log("loading debug:", chatsLoading, "chats:", chats);
   if (chatsLoading) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-[100dvh] flex items-center justify-center">
         <div className="animate-spin h-8 w-8 rounded-full border-4 border-red-500 border-t-transparent"></div>
       </div>
     );
   }
 
   // ---------- MAIN UI ----------
-return (
-  <div className="h-screen flex bg-blue-50 overflow-hidden">
+  return (
+    <div className="h-[100dvh] flex flex-col md:flex-row bg-blue-50 overflow-hidden">
 
-    {/* ================= SIDEBAR (DESKTOP) ================= */}
-    <div className="hidden md:flex md:w-80 bg-white border-r">
-      <div className="relative flex flex-col w-full h-full">
+      {/* ================= SIDEBAR (DESKTOP) ================= */}
+      <div className="hidden md:flex md:w-80 bg-white border-r shrink-0">
+        <div className="relative flex flex-col w-full h-full">
 
-        {/* Header */}
-        <div className="p-4 border-b">
-          <h2 className="text-xl font-semibold text-blue-600">
-            Chats
-          </h2>
-        </div>
+          {/* Header */}
+          <div className="p-4 border-b shrink-0">
+            <h2 className="text-xl font-semibold text-blue-600">
+              Chats
+            </h2>
+          </div>
 
-        {/* Chat list */}
-        <div className="flex-1 overflow-y-auto px-2">
-          <ChatList
-            chats={chats}
-            activeChatId={selectedChatId}
-            //onSelectChat={setSelectedChatId}
-            onSelectUser={setSelectedUser}
-            typingUsers={typingUsers}
-          />
-        </div>
-
-        {/* Plus button */}
-        <PlusButton
-          onClick={() => setIsModalOpen(true)}
-          className="absolute bottom-4 right-4"
-        />
-      </div>
-    </div>
-
-    {/* ================= MAIN AREA ================= */}
-    <div className="flex-1 flex flex-col min-h-0">
-
-      {/* ---------- MOBILE ---------- */}
-      <div className="md:hidden relative flex-1 bg-white">
-
-        {selectedChatId ? (
-          <SingleChat
-            //chatId={selectedChatId}
-            //currentUserId={currentUserId}
-            //selectedUser={selectedUser}
-          />
-        ) : (
-          <div className="flex flex-col h-full">
-
-            {/* Mobile header */}
-            <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold text-blue-600">
-                Chats
-              </h2>
-            </div>
-
-            {/* Mobile chat list */}
-            <div className="flex-1 overflow-y-auto px-4 w-full" style={{ maxWidth: '100vw', overflow: 'hidden' }}>
-              <ChatList
-                chats={chats}
-                activeChatId={selectedChatId}
-                onSelectUser={setSelectedUser}
-                typingUsers={typingUsers}
-              />
-            </div>
-            <PlusButton
-              onClick={() => setIsModalOpen(true)}
-              className="fixed bottom-4 right-4 md:hidden z-40"
+          {/* Chat list */}
+          <div className="flex-1 overflow-y-auto px-2">
+            <ChatList
+              chats={chats}
+              activeChatId={selectedChatId}
+              //onSelectChat={setSelectedChatId}
+              onSelectUser={setSelectedUser}
+              typingUsers={typingUsers}
             />
           </div>
-        )}
 
-        {/* Mobile plus button */}
-        
+          {/* Plus button */}
+          <PlusButton
+            onClick={() => setIsModalOpen(true)}
+            className="absolute bottom-4 right-4"
+          />
+        </div>
       </div>
 
-      {/* ---------- DESKTOP CHAT ---------- */}
-      <div className="hidden md:flex flex-1 min-h-0 bg-white">
-        <SingleChat
+      {/* ================= MAIN AREA ================= */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden h-full">
+
+        {/* ---------- MOBILE ---------- */}
+        <div className="md:hidden relative flex-1 bg-white h-full flex flex-col">
+
+          {selectedChatId ? (
+            <div className="flex-1 h-full min-h-0 flex flex-col">
+              <SingleChat
+              //chatId={selectedChatId}
+              //currentUserId={currentUserId}
+              //selectedUser={selectedUser}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col h-full w-full overflow-hidden">
+
+              {/* Mobile header */}
+              <div className="p-4 border-b shrink-0">
+                <h2 className="text-lg font-semibold text-blue-600">
+                  Chats
+                </h2>
+              </div>
+
+              {/* Mobile chat list */}
+              <div className="flex-1 overflow-y-auto px-4 w-full" style={{ maxWidth: '100vw' }}>
+                <ChatList
+                  chats={chats}
+                  activeChatId={selectedChatId}
+                  onSelectUser={setSelectedUser}
+                  typingUsers={typingUsers}
+                />
+              </div>
+              <PlusButton
+                onClick={() => setIsModalOpen(true)}
+                className="fixed bottom-4 right-4 md:hidden z-40"
+              />
+            </div>
+          )}
+
+          {/* Mobile plus button */}
+
+        </div>
+
+        {/* ---------- DESKTOP CHAT ---------- */}
+        <div className="hidden md:flex flex-1 min-h-0 bg-white h-full flex flex-col">
+          <SingleChat
           //chatId={selectedChatId}
           //currentUserId={currentUserId}
           //selectedUser={selectedUser}
-        />
+          />
+        </div>
       </div>
-    </div>
 
-    {/* ================= MODAL ================= */}
-    <NewChatModal
-      isOpen={isModalOpen}
-      onClose={() => setIsModalOpen(false)}
-      onChatCreated={(chat, user) => {
-        //setSelectedChatId(chat._id);
-        setSelectedUser(user);
-        setIsModalOpen(false);
-      }}
-    />
-  </div>
-);
+      {/* ================= MODAL ================= */}
+      <NewChatModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onChatCreated={(chat, user) => {
+          //setSelectedChatId(chat._id);
+          setSelectedUser(user);
+          setIsModalOpen(false);
+        }}
+      />
+    </div>
+  );
 
 }
 
@@ -241,11 +244,10 @@ function ChatList({
 
               {/* ⌨️ Typing indicator / last message */}
               <p
-                className={`text-sm truncate ${
-                  isTyping
+                className={`text-sm truncate ${isTyping
                     ? "text-blue-500 italic font-medium"
                     : "text-gray-500"
-                }`}
+                  }`}
               >
                 {isTyping
                   ? "typing..."
@@ -258,5 +260,3 @@ function ChatList({
     </ul>
   );
 }
-
-

@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useContext, useRef, useState } from "react";
 import { useChat } from "../contexts/ChatContext";
 import { useUser } from "../contexts/UserContext";
-import { IoIosArrowDown,IoMdSend  } from 'react-icons/io';
+import { IoIosArrowDown, IoMdSend } from 'react-icons/io';
 
 // helper: format time
 const formatTime = (date) =>
@@ -73,7 +73,7 @@ export default function SingleChat() {
   const selectedUser = activeChat?.user;
   const currentUserId = user?._id;
   //console.log("Active chat user selec:", activeChat);
- // console.log("Chat id", chatId);
+  // console.log("Chat id", chatId);
   //console.log("Current user id", currentUserId);
   // console.log("Selected user", selectedUser);
   const bottomRef = useRef(null);
@@ -83,7 +83,7 @@ export default function SingleChat() {
   const longPressTimerRef = useRef(null);
 
   const [message, setMessage] = useState("");
-   const textareaRef = useRef(null);
+  const textareaRef = useRef(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
   const [showChatMenu, setShowChatMenu] = useState(false);
@@ -195,7 +195,7 @@ export default function SingleChat() {
   const handleMessageChange = (e) => {
     setMessage(e.target.value);
     handleTyping();
-    
+
     // Auto-resize textarea
     const textarea = textareaRef.current;
     if (textarea) {
@@ -209,9 +209,9 @@ export default function SingleChat() {
     // Desktop: Enter sends, Shift+Enter new line
     // Mobile: Enter creates new line (natural textarea behavior)
     if (e.key === 'Enter' && !e.shiftKey) {
-      const isMobile = window.innerWidth < 768 || 
-                       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+      const isMobile = window.innerWidth < 768 ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
       if (!isMobile) {
         e.preventDefault();
         handleSendMessage();
@@ -225,7 +225,7 @@ export default function SingleChat() {
     try {
       await sendMessage(selectedUser?.phone, message.trim(), "text");
       setMessage("");
-      
+
     } catch (err) {
       console.error("Failed to send message", err);
     }
@@ -326,12 +326,12 @@ export default function SingleChat() {
   // Calculate menu position - show above if not enough space below
   const calculateMenuPosition = (buttonElement) => {
     if (!buttonElement) return;
-    
+
     const rect = buttonElement.getBoundingClientRect();
     const menuHeight = 150; // Approximate height of menu
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
-    
+
     if (spaceBelow < menuHeight && spaceAbove > menuHeight) {
       // Show above
       setMenuPosition({ bottom: window.innerHeight - rect.top + 5, top: 'auto' });
@@ -343,9 +343,9 @@ export default function SingleChat() {
 
   // ---------- MAIN UI ----------
   return (
-    <div className="flex flex-col h-full w-full bg-[#e5ddd5] md:bg-[#f0f2f5]">
+    <div className="flex flex-col h-full w-full bg-[#e5ddd5] md:bg-[#f0f2f5] overflow-hidden">
       {/* ================= HEADER ================= */}
-      <div className="h-14 md:h-16 bg-white border-b flex items-center justify-between px-3 md:px-6 shadow-sm relative z-[100]" style={{ width: '100%', maxWidth: '100vw', overflow: 'visible' }}>
+      <div className="h-14 md:h-16 bg-white border-b flex items-center justify-between px-3 md:px-6 shadow-sm relative z-[100] shrink-0" style={{ width: '100%', maxWidth: '100vw', overflow: 'visible' }}>
         {selectedMessage ? (
           // Mobile selection mode header
           <>
@@ -394,33 +394,33 @@ export default function SingleChat() {
         ) : (
           <>
             {/* User Info */}
-{/* User Info */}
-      <div className="flex items-center gap-2 md:gap-4 flex-shrink min-w-0" style={{ overflow: 'hidden', flex: '1 1 0', maxWidth: '100%' }}>
-        <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-semibold text-sm md:text-base flex-shrink-0 shadow-md">
-          {selectedUser?.name?.[0]?.toUpperCase()}
-        </div>
+            {/* User Info */}
+            <div className="flex items-center gap-2 md:gap-4 flex-shrink min-w-0" style={{ overflow: 'hidden', flex: '1 1 0', maxWidth: '100%' }}>
+              <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-semibold text-sm md:text-base flex-shrink-0 shadow-md">
+                {selectedUser?.name?.[0]?.toUpperCase()}
+              </div>
 
-        <div className="flex flex-col min-w-0" style={{ overflow: 'hidden', flex: '1 1 0' }}>
-          <span className="font-semibold text-gray-800 text-sm md:text-base truncate" style={{ display: 'block', maxWidth: '100%' }}>
-            {selectedUser?.name}
-          </span>
-          <span className="text-xs text-gray-500 truncate" style={{ display: 'block', maxWidth: '100%' }}>
-            {selectedUser?.isOnline ? (
-              <span className="flex items-center gap-1" style={{ maxWidth: '100%' }}>
-                <span className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Online</span>
-              </span>
-            ) : selectedUser?.lastSeen ? (
-              `Last seen ${formatLastSeen(selectedUser.lastSeen)}`
-            ) : (
-              "Offline"
-            )}
-          </span>
-        </div>
-      </div>
+              <div className="flex flex-col min-w-0" style={{ overflow: 'hidden', flex: '1 1 0' }}>
+                <span className="font-semibold text-gray-800 text-sm md:text-base truncate" style={{ display: 'block', maxWidth: '100%' }}>
+                  {selectedUser?.name}
+                </span>
+                <span className="text-xs text-gray-500 truncate" style={{ display: 'block', maxWidth: '100%' }}>
+                  {selectedUser?.isOnline ? (
+                    <span className="flex items-center gap-1" style={{ maxWidth: '100%' }}>
+                      <span className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Online</span>
+                    </span>
+                  ) : selectedUser?.lastSeen ? (
+                    `Last seen ${formatLastSeen(selectedUser.lastSeen)}`
+                  ) : (
+                    "Offline"
+                  )}
+                </span>
+              </div>
+            </div>
 
-      {/* Three Dots Menu */}
-      <div ref={chatMenuRef} className="relative flex-shrink-0 z-[100]" style={{ marginLeft: '8px',zIndex: 9999 }}>
+            {/* Three Dots Menu */}
+            <div ref={chatMenuRef} className="relative flex-shrink-0 z-[100]" style={{ marginLeft: '8px', zIndex: 9999 }}>
               <button
                 onClick={() => setShowChatMenu(!showChatMenu)}
                 className="text-gray-600 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -437,7 +437,7 @@ export default function SingleChat() {
 
               {showChatMenu && (
                 <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 shadow-lg rounded-lg overflow-hidden"
-                 style={{ zIndex: 9999 }}>
+                  style={{ zIndex: 9999 }}>
                   <div
                     onClick={() => {
                       clearChat(chatId);
@@ -508,10 +508,9 @@ export default function SingleChat() {
                     {/* Message Bubble */}
                     <div
                       className={`relative px-2 md:px-3 py-2 md:py-2 rounded-2xl text-sm md:text-base shadow-sm
-                        ${
-                          isMe
-                            ? "bg-blue-500 text-white rounded-br-md"
-                            : "bg-white text-gray-800 rounded-bl-md"    
+                        ${isMe
+                          ? "bg-blue-500 text-white rounded-br-md"
+                          : "bg-white text-gray-800 rounded-bl-md"
                         }
                       `}
                       style={{ maxWidth: '100%', overflowWrap: 'break-word' }}
@@ -524,10 +523,9 @@ export default function SingleChat() {
                           )
                         }
                         className={`absolute -top-1 -right-1 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center transition-all
-                          ${
-                            isMe
-                              ? "bg-blue-600 text-white hover:bg-blue-700"
-                              : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                          ${isMe
+                            ? "bg-blue-600 text-white hover:bg-blue-700"
+                            : "bg-gray-200 text-gray-600 hover:bg-gray-300"
                           }
                           md:opacity-0 md:group-hover:opacity-100
                           shadow-sm hover:shadow-md
@@ -541,10 +539,9 @@ export default function SingleChat() {
                           {msg.content}
                         </span>
                         <span
-                          className={`text-[10px] md:text-xs ml-2 whitespace-nowrap ${
-                            isMe ? "text-blue-100" : "text-gray-500"
-                          }`}
-                          style={{ 
+                          className={`text-[10px] md:text-xs ml-2 whitespace-nowrap ${isMe ? "text-blue-100" : "text-gray-500"
+                            }`}
+                          style={{
                             paddingBottom: '1px', // Moves it slightly below baseline
                             lineHeight: '1'
                           }}
@@ -559,9 +556,8 @@ export default function SingleChat() {
                 {/* Floating Dropdown Menu */}
                 {showMessageMenu === msg._id && (
                   <div
-                    className={`absolute ${isMe ? "right-0" : "left-0"} ${
-                      shouldShowAbove ? "bottom-full mb-1" : "top-full mt-1"
-                    } z-50`}
+                    className={`absolute ${isMe ? "right-0" : "left-0"} ${shouldShowAbove ? "bottom-full mb-1" : "top-full mt-1"
+                      } z-50`}
                   >
                     <div
                       ref={messageMenuRef}
@@ -635,7 +631,7 @@ export default function SingleChat() {
       </div>
 
       {/* ================= INPUT ================= */}
-      <div className="bg-white border-t px-3 md:px-6 py-3 md:py-4 w-full" style={{ maxWidth: '100vw' }}>
+      <div className="bg-white border-t px-3 md:px-6 py-3 md:py-4 w-full shrink-0" style={{ maxWidth: '100vw' }}>
         <div className="max-w-4xl mx-auto flex items-end gap-2 md:gap-4 w-full">
           <div className="flex-1 relative">
             <textarea
