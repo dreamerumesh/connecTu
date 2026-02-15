@@ -89,6 +89,10 @@ export const ChatProvider = ({ children }) => {
               ...chat,
               lastMessage: message.content,
               lastMessageTime: message.createdAt,
+              // Increment unread count if chat is NOT active
+              unreadCount: (chat.chatId !== activeChatRef.current?.chatId)
+                ? (chat.unreadCount || 0) + 1
+                : 0
             }
             : chat
         )
@@ -369,6 +373,11 @@ export const ChatProvider = ({ children }) => {
     if (chat && chat.chatId) {
       // 🟢 Emit Read Status when opening chat
       socketRef.current?.emit("mark_messages_read", { chatId: chat.chatId });
+
+      // ✅ Reset unread count locally
+      setChats(prev => prev.map(c =>
+        c.chatId === chat.chatId ? { ...c, unreadCount: 0 } : c
+      ));
 
       await fetchMessages(chat.chatId);
       // ⌨️ Clear typing users for this chat

@@ -75,7 +75,7 @@ export default function Chats() {
           {/* Header */}
           <div className="p-4 border-b shrink-0">
             <h2 className="text-xl font-semibold text-blue-600">
-              Chats
+              ConnecTu
             </h2>
           </div>
 
@@ -233,20 +233,27 @@ function ChatList({
                 </p>
 
                 {chat.lastMessageTime && (
-                  <span className="text-xs text-gray-400 whitespace-nowrap">
-                    {new Date(chat.lastMessageTime).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit"
-                    })}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`text-xs whitespace-nowrap ${chat.unreadCount > 0 ? "text-green-600 font-medium" : "text-gray-400"}`}>
+                      {new Date(chat.lastMessageTime).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </span>
+                    {chat.unreadCount > 0 && (
+                      <span className="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] h-[18px] flex items-center justify-center">
+                        {chat.unreadCount}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
 
               {/* ⌨️ Typing indicator / last message */}
               <p
                 className={`text-sm truncate ${isTyping
-                    ? "text-blue-500 italic font-medium"
-                    : "text-gray-500"
+                  ? "text-blue-500 italic font-medium"
+                  : "text-gray-500"
                   }`}
               >
                 {isTyping
