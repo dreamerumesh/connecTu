@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { IoMdMore, IoMdSearch, IoMdCheckmark } from 'react-icons/io'; // ✅ Icons
 import api from "../utils/axiosConfig";
 import SingleChat from "./SingleChat"; // ✅ import single chat
 import { useUser } from "../contexts/UserContext";
@@ -10,6 +11,25 @@ import { useNavigate } from "react-router-dom";
 const normalizePhone = (phone) =>
   phone?.replace(/\D/g, "").slice(-10);
 
+// Use a hook for click outside if needed, or just a simple effect
+// reusing the logic from SingleChat or just defining it here
+const useClickOutside = (ref, handler) => {
+  useEffect(() => {
+    const listener = (event) => {
+      if (!ref.current || ref.current.contains(event.target)) {
+        return;
+      }
+      handler(event);
+    };
+    document.addEventListener("mousedown", listener);
+    document.addEventListener("touchstart", listener);
+    return () => {
+      document.removeEventListener("mousedown", listener);
+      document.removeEventListener("touchstart", listener);
+    };
+  }, [ref, handler]);
+};
+
 // ---------- component ----------
 export default function Chats() {
   const { user } = useUser();
@@ -17,13 +37,42 @@ export default function Chats() {
   const currentUserId = user?._id;
   const navigate = useNavigate();
 
-  const { chats, chatsLoading, fetchChats, typingUsers } = useChat(); // ✅ get typingUsers
+  const { chats, chatsLoading, fetchChats, typingUsers, markAllRead } = useChat(); // ✅ get typingUsers and markAllRead
 
   const isLoggedIn = !!user;
   // const [selectedChatId, setSelectedChatId] = useState(null); // ✅ NEW
   const selectedChatId = activeChat?.chatId || null; // ✅ derive from context
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false); // ✅ Modal state
+
+  // 🔍 Search & Filter States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+
+  const [showDesktopMenu, setShowDesktopMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  const desktopMenuRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+
+  useClickOutside(desktopMenuRef, () => setShowDesktopMenu(false));
+  useClickOutside(mobileMenuRef, () => setShowMobileMenu(false));
+
+  // 🔹 Filtered Chats Logic
+  const filteredChats = chats.filter((chat) => {
+    // 1. Unread Filter
+    if (showUnreadOnly && (chat.unreadCount || 0) === 0) return false;
+
+    // 2. Search Filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const name = chat.user?.name?.toLowerCase() || "";
+      const phone = chat.user?.phone || "";
+      return name.includes(query) || phone.includes(query);
+    }
+
+    return true;
+  });
 
   // 🔹 MOCK phone contacts (web limitation)
   const phoneContacts = [
@@ -73,16 +122,65 @@ export default function Chats() {
         <div className="relative flex flex-col w-full h-full">
 
           {/* Header */}
-          <div className="p-4 border-b shrink-0">
+          <div className="p-4 border-b shrink-0 flex items-center justify-between relative">
             <h2 className="text-xl font-semibold text-blue-600">
               ConnecTu
             </h2>
+
+            {/* Desktop Menu Button */}
+            <div ref={desktopMenuRef} className="relative">
+              <button
+                onClick={() => setShowDesktopMenu(!showDesktopMenu)}
+                className="p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors"
+              >
+                <IoMdMore className="w-6 h-6" />
+              </button>
+
+              {/* Desktop Dropdown Menu */}
+              {showDesktopMenu && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
+                  <button
+                    onClick={() => {
+                      setShowUnreadOnly(!showUnreadOnly);
+                      setShowDesktopMenu(false);
+                    }}
+                    className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"
+                  >
+                    <span>Unread Msgs</span>
+                    {showUnreadOnly && <IoMdCheckmark className="text-blue-500 w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      markAllRead();
+                      setShowDesktopMenu(false);
+                    }}
+                    className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50"
+                  >
+                    Read All
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Search Bar Desktop */}
+          <div className="px-4 py-2 border-b bg-gray-50">
+            <div className="relative">
+              <IoMdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           {/* Chat list */}
           <div className="flex-1 overflow-y-auto px-2">
             <ChatList
-              chats={chats}
+              chats={filteredChats}
               activeChatId={selectedChatId}
               //onSelectChat={setSelectedChatId}
               onSelectUser={setSelectedUser}
@@ -116,16 +214,64 @@ export default function Chats() {
             <div className="flex flex-col h-full w-full overflow-hidden">
 
               {/* Mobile header */}
-              <div className="p-4 border-b shrink-0">
+              <div className="p-4 border-b shrink-0 flex items-center justify-between relative bg-white z-10">
                 <h2 className="text-lg font-semibold text-blue-600">
-                  Chats
+                  ConnecTu
                 </h2>
+                {/* Mobile Menu Button */}
+                <div className="relative" ref={mobileMenuRef} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setShowMobileMenu(!showMobileMenu)}
+                    className="p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors"
+                  >
+                    <IoMdMore className="w-6 h-6" />
+                  </button>
+
+                  {/* Mobile Dropdown Menu */}
+                  {showMobileMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
+                      <button
+                        onClick={() => {
+                          setShowUnreadOnly(!showUnreadOnly);
+                          setShowMobileMenu(false);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between"
+                      >
+                        <span>Unread Msgs</span>
+                        {showUnreadOnly && <IoMdCheckmark className="text-blue-500 w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          markAllRead();
+                          setShowMobileMenu(false);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-50"
+                      >
+                        Read All
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Search Bar Mobile */}
+              <div className="px-4 py-2 border-b bg-gray-50 shrink-0">
+                <div className="relative">
+                  <IoMdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
 
               {/* Mobile chat list */}
               <div className="flex-1 overflow-y-auto px-4 w-full" style={{ maxWidth: '100vw' }}>
                 <ChatList
-                  chats={chats}
+                  chats={filteredChats}
                   activeChatId={selectedChatId}
                   onSelectUser={setSelectedUser}
                   typingUsers={typingUsers}

@@ -493,6 +493,18 @@ export const ChatProvider = ({ children }) => {
     }
   }, []);
 
+  // 📖 Mark all chats as read
+  const markAllRead = useCallback(() => {
+    chats.forEach(chat => {
+      if (chat.unreadCount > 0) {
+        socketRef.current?.emit("mark_messages_read", { chatId: chat.chatId });
+      }
+    });
+
+    // Optimistically update local state
+    setChats(prev => prev.map(chat => ({ ...chat, unreadCount: 0 })));
+  }, [chats]);
+
   const contextValue = useMemo(() => ({
     chats,
     activeChat,
@@ -516,7 +528,9 @@ export const ChatProvider = ({ children }) => {
     handleTyping, // ⌨️
     deleteMessageForMe,
     deleteMessageForEveryone,
+    deleteMessageForEveryone,
     clearChat,
+    markAllRead, // 🆕
     setError
   }), [
     chats,
@@ -542,6 +556,7 @@ export const ChatProvider = ({ children }) => {
     deleteMessageForMe,
     deleteMessageForEveryone,
     clearChat,
+    markAllRead, // 🆕
     setError
   ]);
 
