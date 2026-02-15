@@ -345,7 +345,7 @@ export default function SingleChat() {
   return (
     <div className="flex flex-col h-full w-full bg-[#e5ddd5] md:bg-[#f0f2f5]">
       {/* ================= HEADER ================= */}
-      <div className="h-14 md:h-16 bg-white border-b flex items-center justify-between px-3 md:px-6 shadow-sm">
+      <div className="h-14 md:h-16 bg-white border-b flex items-center justify-between px-3 md:px-6 shadow-sm" style={{ width: '100%', maxWidth: '100vw', overflow: 'hidden' }}>
         {selectedMessage ? (
           // Mobile selection mode header
           <>
@@ -394,32 +394,33 @@ export default function SingleChat() {
         ) : (
           <>
             {/* User Info */}
-            <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-              <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-semibold text-sm md:text-base flex-shrink-0 shadow-md">
-                {selectedUser?.name?.[0]?.toUpperCase()}
-              </div>
+{/* User Info */}
+      <div className="flex items-center gap-2 md:gap-4 flex-shrink min-w-0" style={{ overflow: 'hidden', flex: '1 1 0', maxWidth: '100%' }}>
+        <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-semibold text-sm md:text-base flex-shrink-0 shadow-md">
+          {selectedUser?.name?.[0]?.toUpperCase()}
+        </div>
 
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="font-semibold text-gray-800 text-sm md:text-base truncate">
-                  {selectedUser?.name}
-                </span>
-                <span className="text-xs text-gray-500 truncate">
-                  {selectedUser?.isOnline ? (
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                      Online
-                    </span>
-                  ) : selectedUser?.lastSeen ? (
-                    `Last seen ${formatLastSeen(selectedUser.lastSeen)}`
-                  ) : (
-                    "Offline"
-                  )}
-                </span>
-              </div>
-            </div>
+        <div className="flex flex-col min-w-0" style={{ overflow: 'hidden', flex: '1 1 0' }}>
+          <span className="font-semibold text-gray-800 text-sm md:text-base truncate" style={{ display: 'block', maxWidth: '100%' }}>
+            {selectedUser?.name}
+          </span>
+          <span className="text-xs text-gray-500 truncate" style={{ display: 'block', maxWidth: '100%' }}>
+            {selectedUser?.isOnline ? (
+              <span className="flex items-center gap-1" style={{ maxWidth: '100%' }}>
+                <span className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Online</span>
+              </span>
+            ) : selectedUser?.lastSeen ? (
+              `Last seen ${formatLastSeen(selectedUser.lastSeen)}`
+            ) : (
+              "Offline"
+            )}
+          </span>
+        </div>
+      </div>
 
-            {/* Three Dots Menu */}
-            <div ref={chatMenuRef} className="relative flex-shrink-0">
+      {/* Three Dots Menu */}
+      <div ref={chatMenuRef} className="relative flex-shrink-0" style={{ marginLeft: '8px' }}>
               <button
                 onClick={() => setShowChatMenu(!showChatMenu)}
                 className="text-gray-600 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -482,8 +483,8 @@ export default function SingleChat() {
       </div>
 
       {/* ================= MESSAGES ================= */}
-      <div className="flex-1 overflow-y-auto px-3 md:px-6 py-4 md:py-6">
-        <div className="w-full space-y-2 md:space-y-3">
+      <div className="flex-1 overflow-y-auto px-3 md:px-6 py-4 md:py-6 w-full overflow-x-hidden" style={{ maxWidth: '100vw' }}>
+        <div className="w-full space-y-2 md:space-y-3" style={{ maxWidth: '100%' }}>
           {messages.length === 0 && (
             <div className="text-center text-gray-500 mt-20">
               <div className="text-5xl mb-4">💬</div>
@@ -500,18 +501,19 @@ export default function SingleChat() {
             const shouldShowAbove = messages.length > 2 && index >= messages.length - 2;
 
             return (
-              <div key={msg._id} className="flex flex-col group relative">
-                <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                  <div className="flex items-end gap-1 md:gap-2 max-w-[85%] md:max-w-[70%]">
+              <div key={msg._id} className="flex flex-col group relative w-full">
+                <div className={`flex ${isMe ? "justify-end" : "justify-start"} w-full`}>
+                  <div className="flex items-end gap-1 md:gap-2 max-w-[85%] md:max-w-[70%]" style={{ wordBreak: 'break-word' }}>
                     {/* Message Bubble */}
                     <div
-                      className={`relative px-2 md:px-3 md:py-1 rounded-2xl text-sm md:text-base shadow-sm
+                      className={`relative px-2 md:px-3 py-2 md:py-2 rounded-2xl text-sm md:text-base shadow-sm
                         ${
                           isMe
                             ? "bg-blue-500 text-white rounded-br-md"
                             : "bg-white text-gray-800 rounded-bl-md"    
                         }
                       `}
+                      style={{ maxWidth: '100%', overflowWrap: 'break-word' }}
                     >
                       {/* Arrow Button - Top Right Corner */}
                       <button
@@ -629,8 +631,8 @@ export default function SingleChat() {
       </div>
 
       {/* ================= INPUT ================= */}
-      <div className="bg-white border-t px-3 md:px-6 py-3 md:py-4">
-        <div className="max-w-4xl mx-auto flex items-end gap-2 md:gap-4">
+      <div className="bg-white border-t px-3 md:px-6 py-3 md:py-4 w-full" style={{ maxWidth: '100vw' }}>
+        <div className="max-w-4xl mx-auto flex items-end gap-2 md:gap-4 w-full">
           <div className="flex-1 relative">
             <textarea
               ref={textareaRef}
