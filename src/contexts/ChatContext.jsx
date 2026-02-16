@@ -202,6 +202,34 @@ export const ChatProvider = ({ children }) => {
       }
     });
 
+    // ✏️ MESSAGE UPDATED LISTENER
+    socketRef.current.on("message-updated", (payload) => {
+      console.log("✏️ message-updated RECEIVED:", payload);
+      const { messageId, chatId, newContent, isEdited, isLastMessage } = payload;
+
+      // Update in active chat's messages
+      if (chatId === activeChatRef.current?.chatId) {
+        setMessages(prev =>
+          prev.map(msg =>
+            msg._id === messageId
+              ? { ...msg, content: newContent, isEdited: true }
+              : msg
+          )
+        );
+      }
+
+      // Update in chat list (preview)
+      if(isLastMessage){
+          setChats(prev =>
+            prev.map(chat =>
+              chat.chatId === chatId && chat.lastMessageTime // Rough check if it's the last message
+                ? { ...chat, lastMessage: newContent } // Simply update preview text
+                : chat
+            )
+          );
+        }
+      });
+
     // 📨 MESSAGE DELIVERED LISTENER
     socketRef.current.on("message_delivered", (payload) => {
       // console.log("📨 message_delivered RECEIVED:", payload);
@@ -324,7 +352,7 @@ export const ChatProvider = ({ children }) => {
   }, [activeChat]);
 
   // Edit an existing message
-  const editMessage = useCallback(async (messageId, newContent) => {
+  const editMessage = useCallback(async (messageId, newContent,isLastMessage = false) => {
     try {
       setError(null);
       const data = await chatService.editMessage(messageId, newContent);
@@ -337,7 +365,9 @@ export const ChatProvider = ({ children }) => {
       );
 
       // Refresh chat list to update last message if needed
-      await fetchChats();
+      // if(isLastMessage){
+      //   await fetchChats();
+      // }
 
       return data.message;
     } catch (err) {

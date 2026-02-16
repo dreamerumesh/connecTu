@@ -60,10 +60,10 @@ export default function SingleChat() {
     joinChat,
     activeChat,
     typingUsers,
-    handleTyping,
-    deleteMessageForMe,
     deleteMessageForEveryone,
     clearChat,
+    editMessage, // ✏️
+    handleTyping,
   } = useChat();
 
   const { user } = useUser();
@@ -85,10 +85,12 @@ export default function SingleChat() {
   const [message, setMessage] = useState("");
   const textareaRef = useRef(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
+  const [editingMessage, setEditingMessage] = useState(null); // ✏️ Track message being edited
   const [showMessageMenu, setShowMessageMenu] = useState(null);
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, bottom: 'auto' });
+  const [ isLastMessage, setIsLastMessage ] = useState(null);
 
   // Detect mobile device
   useEffect(() => {
@@ -223,15 +225,40 @@ export default function SingleChat() {
     if (!message.trim()) return;
 
     try {
-      await sendMessage(selectedUser?.phone, message.trim(), "text");
-      setMessage("");
+      if (editingMessage) {
+        // ✏️ Handle Edit
+        await editMessage(editingMessage._id, message.trim(), isLastMessage);
+        setEditingMessage(null);
+        setMessage("");
+        setIsLastMessage(null);
+      } else {
+        // 📨 Handle Send
+        await sendMessage(selectedUser?.phone, message.trim(), "text");
+        setMessage("");
+      }
 
     } catch (err) {
-      console.error("Failed to send message", err);
+      console.error("Failed to send/edit message", err);
     }
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
+  };
+
+  // ✏️ Enter Edit Mode
+  const handleEdit = (msg, isLastMessage) => {
+    //console.log("Editing message:", isLastMessage);
+    setIsLastMessage(isLastMessage);
+    setEditingMessage(msg);
+    setMessage(msg.content);
+    setShowMessageMenu(null);
+    textareaRef.current?.focus();
+  };
+
+  // ✏️ Cancel Edit Mode
+  const cancelEdit = () => {
+    setEditingMessage(null);
+    setMessage("");
   };
 
   // ⌨️ Handle input change with typing indicator
@@ -545,7 +572,10 @@ export default function SingleChat() {
                             paddingBottom: '1px', // Moves it slightly below baseline
                             lineHeight: '1',
                           }}
-                        >
+                        > 
+                           {msg.isEdited && (
+                            <span className="italic text-[13px]">(edited)</span>
+                          )}
                           {formatTime(msg.createdAt)}
                           {isMe && (
                             <span className="ml-[2px] flex items-center">
@@ -622,6 +652,19 @@ export default function SingleChat() {
                             Delete for everyone
                           </div>
                         )}
+
+                        {/* ✏️ EDIT OPTION (Only for sender) */}
+                        {msg.sender === currentUserId && (
+                          <div
+                            onClick={() => handleEdit(msg,isLastMessage)}
+                            className="px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50 cursor-pointer flex items-center gap-3 transition-colors border-t border-gray-100"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            Edit
+                          </div>
+                        )}
                       </div>
                     </div>
                   )
@@ -645,6 +688,20 @@ export default function SingleChat() {
 
       {/* ================= INPUT ================= */}
       <div className="bg-white border-t px-3 md:px-6 py-3 md:py-4 w-full shrink-0" style={{ maxWidth: '100vw' }}>
+        {/* ✏️ Edit Mode Indicator */}
+        {editingMessage && (
+          <div className="flex items-center justify-between bg-blue-50 px-4 py-2 rounded-t-lg -mt-3 mb-2 border-b border-blue-100">
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-blue-600">Editing Message</span>
+              <span className="text-xs text-gray-500 truncate max-w-[200px]">{editingMessage.content}</span>
+            </div>
+            <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
         <div className="max-w-4xl mx-auto flex items-end gap-2 md:gap-4 w-full">
           <div className="flex-1 relative">
             <textarea
@@ -668,8 +725,12 @@ export default function SingleChat() {
             disabled={!message.trim()}
             className="bg-blue-500 text-white p-2.5 md:px-6 md:py-2.5 rounded-full hover:bg-blue-600 active:bg-blue-700 transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 mb-0.5"
           >
-            <span className="hidden md:inline">Send</span>
-            <IoMdSend className="w-5 h-5 md:hidden md:w-6 md:h-6" />
+            <span className="hidden md:inline">{editingMessage ? "Update" : "Send"}</span>
+            {editingMessage ? (
+              <IoMdCheckmark className="w-5 h-5 md:hidden md:w-6 md:h-6" />
+            ) : (
+              <IoMdSend className="w-5 h-5 md:hidden md:w-6 md:h-6" />
+            )}
           </button>
         </div>
       </div>

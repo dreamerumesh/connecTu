@@ -57,7 +57,7 @@ export const chatService = {
    * @param {string} newContent - New message content
    * @returns {Promise<{success: boolean, message: Object}>}
    */
-  editMessage: async (messageId, newContent) => {
+  editMessage: async (messageId, newContent,isLastMessage) => {
     try {
       const response = await api.put('/chats/edit-message', {
         messageId,
